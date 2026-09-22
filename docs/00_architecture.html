@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>進度本 架構藍圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<style>
+:root{
+  --ground:#FFF1E8;
+  --panel:#FFFFFF;
+  --sunk:#F5E7DC;
+  --ink:#1D2B53;
+  --muted:#5C668C;
+  --line:#1D2B53;
+  --hair:#C9BBAE;
+  --green:#008751;
+  --red:#C4003B;
+  --amber:#8A4B00;
+  --accent:#FFA300;
+  --shadow:#1D2B53;
+  --ghost:#9A8E84;
+  --px:'Silkscreen','Noto Sans TC',system-ui,sans-serif;
+  --body:'Noto Sans TC',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono','Noto Sans TC',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1226;
+    --panel:#1A2044;
+    --sunk:#141A38;
+    --ink:#ECE6F5;
+    --muted:#9BA6CC;
+    --line:#3C4780;
+    --hair:#2E3763;
+    --green:#3FE08B;
+    --red:#FF7391;
+    --amber:#FFC24D;
+    --accent:#FFC24D;
+    --shadow:#050813;
+    --ghost:#6B75A0;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1226;
+  --panel:#1A2044;
+  --sunk:#141A38;
+  --ink:#ECE6F5;
+  --muted:#9BA6CC;
+  --line:#3C4780;
+  --hair:#2E3763;
+  --green:#3FE08B;
+  --red:#FF7391;
+  --amber:#FFC24D;
+  --accent:#FFC24D;
+  --shadow:#050813;
+  --ghost:#6B75A0;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1020px;margin:0 auto;padding-inline:16px;padding-block:0 72px;}
+
+/* ---------- 共用 ---------- */
+.px{font-family:var(--px);letter-spacing:.02em;}
+.eyebrow{
+  font-family:var(--px);font-size:11px;line-height:1.5;
+  text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+}
+h1,h2,h3{text-wrap:balance;margin:0;}
+h1{font-family:var(--px);font-size:33px;line-height:1.25;font-weight:700;}
+h2{font-family:var(--px);font-size:22px;line-height:1.35;font-weight:700;}
+h3{font-size:17px;font-weight:700;line-height:1.5;}
+p{margin:0;}
+code,.mono{font-family:var(--mono);font-size:12.5px;}
+
+.card{
+  background:var(--panel);
+  border:2px solid var(--line);
+  box-shadow:3px 3px 0 var(--shadow);
+  padding:18px;
+}
+.tag{
+  display:inline-block;font-family:var(--px);font-size:11px;line-height:1;
+  padding:6px 8px;border:2px solid var(--line);background:var(--sunk);
+}
+.tag.on{background:var(--green);color:#FFF1E8;border-color:var(--green);}
+:root[data-theme="dark"] .tag.on,
+:root:not([data-theme="light"]) .tag.on{color:#0D1226;}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .tag.on{color:#FFF1E8;}}
+.tag.later{background:transparent;border-style:dashed;color:var(--ghost);border-color:var(--ghost);}
+
+/* ---------- 頁首 ---------- */
+header.top{
+  border-bottom:2px solid var(--line);
+  background:var(--panel);
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+}
+.topin{
+  max-width:1020px;margin:0 auto;padding-inline:16px;
+  display:flex;align-items:center;gap:12px;min-height:52px;flex-wrap:wrap;
+}
+.brand{font-family:var(--px);font-size:11px;letter-spacing:.14em;text-transform:uppercase;}
+nav.chips{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;padding-block:6px;}
+nav.chips a{
+  font-family:var(--px);font-size:11px;line-height:1;color:var(--ink);text-decoration:none;
+  display:inline-flex;align-items:center;min-height:32px;padding:0 10px;
+  border:2px solid var(--line);background:var(--ground);
+}
+nav.chips a:hover{background:var(--accent);color:#1D2B53;}
+nav.chips a:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+
+.hero{padding-block:36px 8px;}
+.hero .sub{color:var(--muted);max-width:62ch;margin-top:10px;}
+.hero .metas{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+
+.alert{
+  margin-top:22px;border:2px dashed var(--red);background:var(--panel);
+  padding:16px;
+}
+.alert h3{color:var(--red);font-family:var(--px);font-size:11px;letter-spacing:.1em;margin-bottom:8px;}
+.alert p{font-size:14px;color:var(--ink);}
+.alert p + p{margin-top:8px;}
+
+section{padding-block:40px 0;scroll-margin-top:72px;}
+.sechead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--line);padding-bottom:10px;margin-bottom:22px;}
+.sechead .n{font-family:var(--px);font-size:22px;color:var(--accent);}
+.lead{color:var(--muted);font-size:14px;max-width:70ch;margin-bottom:20px;}
+
+/* ---------- 功能架構圖 ---------- */
+.root-node{
+  display:inline-flex;flex-direction:column;gap:4px;align-items:flex-start;
+  border:3px solid var(--line);background:var(--green);color:#FFF1E8;
+  padding:12px 16px;box-shadow:4px 4px 0 var(--shadow);
+}
+:root[data-theme="dark"] .root-node,
+:root:not([data-theme="light"]) .root-node{color:#0D1226;}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .root-node{color:#FFF1E8;}}
+.root-node b{font-family:var(--px);font-size:22px;}
+.root-node span{font-family:var(--px);font-size:11px;letter-spacing:.1em;}
+.rail{width:0;height:24px;border-left:3px solid var(--line);margin-left:28px;}
+
+.modgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.mod{background:var(--panel);border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);padding:0;display:flex;flex-direction:column;}
+.mod > .h{
+  display:flex;align-items:center;gap:8px;
+  border-bottom:2px solid var(--line);padding:10px 12px;background:var(--sunk);
+}
+.mod > .h .num{font-family:var(--px);font-size:11px;color:var(--muted);}
+.mod > .h .t{font-weight:700;font-size:15px;}
+.mod ul{list-style:none;margin:0;padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;}
+.mod li{font-size:13.5px;line-height:1.6;display:flex;gap:8px;align-items:flex-start;color:var(--ink);}
+.mod li::before{content:"▸";color:var(--green);font-size:12px;line-height:1.7;flex:none;}
+.mod li .note{color:var(--muted);font-size:12.5px;}
+.mod.later{border-style:dashed;border-color:var(--ghost);box-shadow:none;background:transparent;}
+.mod.later > .h{background:transparent;border-bottom-color:var(--ghost);border-bottom-style:dashed;}
+.mod.later li,.mod.later .t{color:var(--ghost);}
+.mod.later li::before{content:"▹";color:var(--ghost);}
+
+/* ---------- 軟體架構 ---------- */
+.stack{display:flex;flex-direction:column;align-items:stretch;}
+.layer{border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow);}
+.layer > .lh{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  padding:10px 12px;border-bottom:2px solid var(--line);background:var(--sunk);
+}
+.layer > .lh .lt{font-family:var(--px);font-size:11px;letter-spacing:.1em;text-transform:uppercase;}
+.layer > .lh .ld{font-size:12.5px;color:var(--muted);}
+.boxes{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;padding:12px;}
+.box{border:2px solid var(--line);background:var(--ground);padding:10px;}
+.box b{display:block;font-family:var(--mono);font-size:12.5px;font-weight:600;margin-bottom:4px;}
+.box small{display:block;font-size:12px;color:var(--muted);line-height:1.6;}
+.box.accent{border-color:var(--green);}
+.box.warn{border-color:var(--red);}
+.arrow{display:flex;justify-content:center;align-items:center;gap:8px;padding:8px 0;color:var(--muted);}
+.arrow .ln{width:3px;height:14px;background:var(--line);}
+.arrow .lbl{font-family:var(--px);font-size:11px;color:var(--muted);}
+
+.tbl-wrap{overflow-x:auto;border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);background:var(--panel);}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13px;}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--hair);vertical-align:top;}
+th{font-family:var(--px);font-size:11px;letter-spacing:.06em;background:var(--sunk);border-bottom:2px solid var(--line);white-space:nowrap;}
+td code{background:var(--sunk);padding:1px 5px;border:1px solid var(--hair);}
+tr:last-child td{border-bottom:none;}
+td .ok{color:var(--green);font-weight:700;}
+td .no{color:var(--red);font-weight:700;}
+
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;}
+.flow .f{border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow);padding:14px;}
+.flow .f h3{font-size:14px;margin-bottom:10px;display:flex;gap:8px;align-items:center;}
+.flow .f h3 .s{font-family:var(--px);font-size:11px;background:var(--accent);color:#1D2B53;padding:4px 6px;border:2px solid var(--line);}
+.flow ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;}
+.flow li{font-size:13px;line-height:1.6;}
+.flow li code{font-size:11.5px;}
+
+.rules{display:flex;flex-direction:column;gap:10px;}
+.rule{border-left:6px solid var(--green);background:var(--panel);border:2px solid var(--line);border-left-width:6px;border-left-color:var(--green);padding:12px 14px;}
+.rule.deny{border-left-color:var(--red);}
+.rule .rt{font-family:var(--mono);font-size:12.5px;font-weight:600;margin-bottom:4px;}
+.rule .rd{font-size:13px;color:var(--muted);line-height:1.65;}
+
+/* ---------- UI ---------- */
+.tokrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:22px;}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;}
+.sw{border:2px solid var(--line);}
+.sw .chip{height:40px;display:flex;align-items:flex-end;justify-content:flex-end;padding:3px;}
+.sw .chip span{font-family:var(--px);font-size:11px;color:#FFF1E8;text-shadow:1px 1px 0 rgba(0,0,0,.6);}
+.sw .nm{font-family:var(--mono);font-size:10.5px;padding:4px 5px;background:var(--sunk);border-top:2px solid var(--line);line-height:1.4;}
+.contrast{display:flex;flex-direction:column;gap:10px;}
+.cline{display:flex;align-items:center;gap:10px;border:2px solid var(--line);padding:8px 10px;background:var(--panel);flex-wrap:wrap;}
+.cline .demo{font-weight:700;font-size:14px;}
+.cline .ratio{font-family:var(--px);font-size:11px;margin-left:auto;color:var(--muted);}
+.sizes{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;}
+.sizes b{font-family:var(--px);display:block;}
+.sizes .s11{font-size:11px;}.sizes .s22{font-size:22px;}.sizes .s33{font-size:33px;}
+.sizes small{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+.phones{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:20px;}
+.phone{display:flex;flex-direction:column;gap:8px;}
+.phone > .cap{font-family:var(--px);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+.screen{
+  width:100%;max-width:300px;border:3px solid var(--line);background:var(--ground);
+  box-shadow:5px 5px 0 var(--shadow);display:flex;flex-direction:column;overflow:hidden;
+}
+.sbar{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--line);color:#FFF1E8;font-family:var(--px);font-size:11px;}
+.sbar .dot{width:6px;height:6px;background:var(--accent);}
+.sbar .r{margin-left:auto;}
+.shead{padding:10px 10px 8px;border-bottom:2px solid var(--line);background:var(--panel);}
+.shead .gsw{display:flex;align-items:center;gap:6px;}
+.shead .gsw b{font-family:var(--px);font-size:11px;}
+.shead .gsw .car{font-size:10px;color:var(--muted);}
+.shead .ttl{font-family:var(--px);font-size:22px;margin-top:6px;}
+.sbody{padding:10px;display:flex;flex-direction:column;gap:8px;flex:1;background:var(--ground);}
+
+.hw{border:2px solid var(--line);background:var(--panel);padding:8px;display:flex;gap:8px;align-items:flex-start;}
+.hw .sq{width:26px;height:26px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--px);font-size:11px;color:#FFF1E8;flex:none;}
+.hw .tx{flex:1;min-width:0;}
+.hw .tx b{display:block;font-size:12.5px;line-height:1.4;font-weight:700;}
+.hw .tx small{display:block;font-size:11px;color:var(--muted);font-family:var(--mono);}
+.hw .d{font-family:var(--px);font-size:11px;padding:3px 5px;border:2px solid var(--line);flex:none;}
+.hw .d.urgent{background:var(--red);color:#FFF1E8;border-color:var(--red);}
+.hw .d.soon{background:var(--accent);color:#1D2B53;border-color:var(--line);}
+.hw .d.ok{background:transparent;color:var(--muted);border-color:var(--hair);}
+
+.tree{display:flex;flex-direction:column;gap:5px;font-size:12.5px;}
+.tnode{display:flex;gap:6px;align-items:center;padding:5px 6px;border:2px solid transparent;}
+.tnode .ic{font-family:var(--px);font-size:11px;color:var(--muted);flex:none;}
+.tnode.cur{border-color:var(--green);background:var(--panel);}
+.tnode.cur .flag{margin-left:auto;font-family:var(--px);font-size:11px;color:var(--green);}
+.tnode.miss{border-color:var(--red);background:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in srgb,var(--red) 14%,transparent) 5px 10px);}
+.tnode.miss .flag{margin-left:auto;font-family:var(--px);font-size:11px;color:var(--red);}
+.tnode.sub{margin-left:16px;}
+
+.qdates{display:flex;gap:6px;flex-wrap:wrap;}
+.qd{font-family:var(--px);font-size:11px;min-height:34px;display:inline-flex;align-items:center;padding:0 9px;border:2px solid var(--line);background:var(--panel);}
+.qd.sel{background:var(--green);color:#FFF1E8;border-color:var(--green);}
+.field{border:2px solid var(--line);background:var(--panel);padding:8px;}
+.field .lb{font-family:var(--px);font-size:11px;color:var(--muted);display:block;margin-bottom:4px;}
+.field .vl{font-size:12.5px;}
+.field .ph{font-size:12.5px;color:var(--ghost);}
+.pastebox{border:2px solid var(--line);background:var(--panel);padding:8px;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--muted);white-space:pre-wrap;}
+.parsed{border:2px solid var(--green);background:var(--panel);padding:8px;font-size:11.5px;line-height:1.7;}
+.parsed b{font-family:var(--px);font-size:11px;color:var(--green);display:block;margin-bottom:4px;}
+
+.btn{
+  font-family:var(--px);font-size:11px;min-height:44px;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--line);background:var(--green);color:#FFF1E8;box-shadow:3px 3px 0 var(--shadow);
+}
+.btn.ghost{background:var(--panel);color:var(--ink);}
+
+.bnav{display:flex;border-top:2px solid var(--line);background:var(--panel);}
+.bnav a{
+  flex:1;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  text-decoration:none;color:var(--muted);font-family:var(--px);font-size:11px;
+}
+.bnav a.act{color:var(--green);}
+.bnav svg{display:block;}
+.bnav svg rect{fill:currentColor;}
+
+.checklist{display:flex;flex-direction:column;gap:10px;}
+.chk{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--line);background:var(--panel);padding:12px;box-shadow:3px 3px 0 var(--shadow);}
+.chk .mk{font-family:var(--px);font-size:11px;flex:none;border:2px solid var(--line);padding:4px 6px;background:var(--sunk);}
+.chk .bd b{display:block;font-size:14px;margin-bottom:3px;}
+.chk .bd small{display:block;font-size:12.5px;color:var(--muted);line-height:1.6;}
+
+footer{margin-top:48px;border-top:2px solid var(--line);padding-top:16px;color:var(--muted);font-size:12.5px;}
+
+@media (max-width:480px){
+  h1{font-size:22px;}
+  .wrap{padding-block:0 56px;}
+}
+@media (prefers-reduced-motion:no-preference){
+  nav.chips a{transition:background 120ms steps(2);}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="topin">
+    <span class="brand">進度本 / JINDU</span>
+    <nav class="chips" aria-label="章節導覽">
+      <a href="#fn">功能架構</a>
+      <a href="#sw">軟體架構</a>
+      <a href="#ui">UI 介面</a>
+      <a href="#todo">待確認</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <p class="eyebrow">階段一 · 架構藍圖 · 2026-09-22</p>
+    <h1>進度本 架構藍圖</h1>
+    <p class="sub">大學班級共用的課程進度、作業提醒與考試重點複習工具。這份藍圖涵蓋第一階段的功能架構、軟體架構與像素風 UI 介面，作為動工前的共同依據。尚未寫任何程式。</p>
+    <div class="metas">
+      <span class="tag on">階段一 · 9 項功能</span>
+      <span class="tag">Firebase + Monorepo</span>
+      <span class="tag">Asia/Taipei</span>
+      <span class="tag later">階段二 待排</span>
+    </div>
+  </div>
+
+  <div class="alert">
+    <h3>⚠ 規格書缺席 — 本圖為重建版</h3>
+    <p><code>jindu-project/</code> 在連結的資料夾裡不存在：<code>D:\專案\歐趴EZ</code> 只有一份舊的單檔 Vue 原型（index.html / manifest.json / sw.js），找不到 START-HERE.md、01_spec.md、02_test-log.md 或 design/。</p>
+    <p>因此下面所有內容 <b>只依據你訊息裡寫明的需求</b> 重建。規格書第 3 節權限表、第 7 節配色、02_test-log 第三部分的 UI 修正，我沒有原文，凡是需要補的地方一律標成「待確認」列在最後一節，沒有自行編造成既定決策。</p>
+  </div>
+
+  <!-- ===================== 功能架構圖 ===================== -->
+  <section id="fn">
+    <div class="sechead">
+      <span class="n">01</span>
+      <h2>功能架構圖</h2>
+      <span class="eyebrow">階段一範圍</span>
+    </div>
+    <p class="lead">灰色虛線框是你指定「之後再做」的範圍，畫在這裡是為了讓資料結構一開始就預留位置，階段一不實作。</p>
+
+    <div class="root-node">
+      <b>進度本</b>
+      <span>PWA + LIFF · 手機優先</span>
+    </div>
+    <div class="rail" aria-hidden="true"></div>
+
+    <div class="modgrid">
+      <div class="mod">
+        <div class="h"><span class="num">01</span><span class="t">帳號與群組</span></div>
+        <ul>
+          <li>Google 登入（Firebase Auth）</li>
+          <li>建立群組，建立者為擁有者</li>
+          <li>邀請連結加入 <span class="note">預設角色檢視者</span></li>
+          <li>邀請連結可設到期、可重新產生（舊連結立即失效）</li>
+          <li>多群組切換</li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">02</span><span class="t">成員與權限</span></div>
+        <ul>
+          <li>成員清單與角色標示</li>
+          <li>擁有者指派管理者</li>
+          <li>擁有者移除管理者（降回檢視者）</li>
+          <li>轉移擁有者 <span class="note">單一擁有者，需二次確認</span></li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">03</span><span class="t">學期</span></div>
+        <ul>
+          <li>建立學期（名稱、起訖日）</li>
+          <li>切換目前學期</li>
+          <li>科目與內容均掛在學期底下</li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">04</span><span class="t">開學設定精靈</span></div>
+        <ul>
+          <li><b>步驟 1</b> 新增科目：名稱、3 字以內簡稱、12 色選一、上課時間</li>
+          <li><b>步驟 2</b> 貼上目錄 → 批次建立章與小節</li>
+          <li><b>步驟 3</b> 複製邀請連結</li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">05</span><span class="t">科目管理</span></div>
+        <ul>
+          <li>章節樹：新增、改名、排序、刪除（軟刪除）</li>
+          <li>設定目前進度（指向某一節點）</li>
+          <li>科目本身的名稱／簡稱／色／上課時間編輯</li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">06</span><span class="t">我修的科目</span></div>
+        <ul>
+          <li>加入群組後選擇自己修的科目</li>
+          <li>總覽與各列表只顯示已選科目</li>
+          <li>隨時可回到設定調整</li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">07</span><span class="t">內容項目</span></div>
+        <ul>
+          <li><b>作業</b>：快速日期「下堂課 / 下週同一堂 / 明天 / 自訂」</li>
+          <li><b>關鍵字</b>：可批次新增，說明欄支援 LaTeX（KaTeX）</li>
+          <li><b>檔案</b>：上傳與預覽，單檔 30 MB、拒絕 video/*</li>
+          <li><b>連結</b>：標題 + URL</li>
+        </ul>
+      </div>
+
+      <div class="mod">
+        <div class="h"><span class="num">08</span><span class="t">頁面</span></div>
+        <ul>
+          <li><b>總覽</b>：7 天內到期的作業</li>
+          <li><b>作業</b>：依科目／到期日列出</li>
+          <li><b>筆記</b>：關鍵字、檔案、連結</li>
+          <li><b>進度</b>：章節樹 + 目前進度 + 缺重點標示</li>
+        </ul>
+      </div>
+
+      <div class="mod later">
+        <div class="h"><span class="num">—</span><span class="t">階段二（本次不做）</span></div>
+        <ul>
+          <li>考試與範圍</li>
+          <li>閃卡複習</li>
+          <li>LINE / LIFF 綁定</li>
+          <li>推播與提醒排程</li>
+          <li>AI 產生重點</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 軟體架構圖 ===================== -->
+  <section id="sw">
+    <div class="sechead">
+      <span class="n">02</span>
+      <h2>軟體架構圖</h2>
+      <span class="eyebrow">Monorepo + Firebase</span>
+    </div>
+    <p class="lead">四層：前端、共用純函式、Firebase 後端、規則與測試。純函式全部集中在 packages/shared，前端與 Functions 共用同一份，日期一律走 Asia/Taipei。</p>
+
+    <div class="stack">
+      <div class="layer">
+        <div class="lh"><span class="lt">Layer 1 · Client</span><span class="ld">apps/web — React + Vite + TypeScript，PWA</span></div>
+        <div class="boxes">
+          <div class="box"><b>/app/*</b><small>主應用路由：總覽、作業、筆記、進度、設定</small></div>
+          <div class="box"><b>/liff/*</b><small>LIFF 頁面同一個 app，用路由區分（階段二啟用）</small></div>
+          <div class="box"><b>/join/:token</b><small>邀請連結落地頁</small></div>
+          <div class="box"><b>styles/tokens.css</b><small>CSS 變數設計 token，無 UI 元件庫</small></div>
+        </div>
+      </div>
+
+      <div class="arrow" aria-hidden="true"><span class="ln"></span><span class="lbl">import</span><span class="ln"></span></div>
+
+      <div class="layer">
+        <div class="lh"><span class="lt">Layer 2 · Shared</span><span class="ld">packages/shared — 純函式，前端與 Functions 共用，Vitest 覆蓋</span></div>
+        <div class="boxes">
+          <div class="box accent"><b>parseOutline()</b><small>目錄文字 → 章／小節結構。處理「第一章」「第1章」「Chapter 1」「1-1」「1.1」、空行、多餘空白</small></div>
+          <div class="box accent"><b>nextClassDate()</b><small>依科目上課時間 + 現在時間算下一次上課日，跳過假日清單</small></div>
+          <div class="box accent"><b>parseKeywords()</b><small>批次貼上解析，分隔符：｜ | Tab 、</small></div>
+          <div class="box"><b>types/</b><small>Group / Member / Semester / Subject / Chapter / Item 型別</small></div>
+          <div class="box"><b>tz.ts</b><small>Asia/Taipei 固定時區，不讀系統預設</small></div>
+          <div class="box warn"><b>data/holidays.json</b><small>2026–2027 學年台灣國定假日，需人工核對 + 補學校停課日</small></div>
+        </div>
+      </div>
+
+      <div class="arrow" aria-hidden="true"><span class="ln"></span><span class="lbl">Firebase SDK v10 模組化</span><span class="ln"></span></div>
+
+      <div class="layer">
+        <div class="lh"><span class="lt">Layer 3 · Firebase</span><span class="ld">Auth / Firestore / Storage / Functions v2 / App Check</span></div>
+        <div class="boxes">
+          <div class="box"><b>Auth</b><small>Google 登入</small></div>
+          <div class="box"><b>App Check</b><small>reCAPTCHA Enterprise；Firestore、Storage、Functions 全部強制</small></div>
+          <div class="box"><b>Firestore</b><small>群組為根，內容掛在學期 → 科目底下</small></div>
+          <div class="box"><b>Storage</b><small>groups/{gid}/… 單檔 30 MB、拒絕 video/*</small></div>
+          <div class="box warn"><b>Functions v2 · joinByInvite</b><small>Callable。非成員無法自行寫 roles，加入一定要走後端</small></div>
+          <div class="box"><b>Functions v2 · rotateInvite</b><small>Callable。重新產生 token，舊 token 立即失效</small></div>
+        </div>
+      </div>
+
+      <div class="arrow" aria-hidden="true"><span class="ln"></span><span class="lbl">enforce / test</span><span class="ln"></span></div>
+
+      <div class="layer">
+        <div class="lh"><span class="lt">Layer 4 · Rules &amp; Test</span><span class="ld">根目錄規則檔 + Emulator Suite</span></div>
+        <div class="boxes">
+          <div class="box"><b>firestore.rules</b><small>依 groups/{gid}.roles 判斷</small></div>
+          <div class="box"><b>storage.rules</b><small>大小、型別、管理者寫入</small></div>
+          <div class="box"><b>firestore.indexes.json</b><small>複合索引，見下表</small></div>
+          <div class="box"><b>Vitest</b><small>純函式單元測試</small></div>
+          <div class="box"><b>@firebase/rules-unit-testing</b><small>權限表每格一個允許／拒絕案例</small></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:32px;margin-bottom:6px;">建議的目錄結構</h3>
+    <p class="lead">符合你指定的 pnpm workspaces 配置。</p>
+    <div class="tbl-wrap"><table>
+      <tbody>
+        <tr><td><code>apps/web/</code></td><td>React + Vite + TS，PWA，LIFF 頁面以路由區分</td></tr>
+        <tr><td><code>functions/</code></td><td>Cloud Functions v2，TypeScript，Node.js</td></tr>
+        <tr><td><code>packages/shared/</code></td><td>共用型別、日期計算、目錄解析、關鍵字解析、holidays.json</td></tr>
+        <tr><td><code>firestore.rules</code><br><code>storage.rules</code><br><code>firestore.indexes.json</code></td><td>根目錄</td></tr>
+        <tr><td><code>firebase.json</code> · <code>pnpm-workspace.yaml</code> · <code>.env.example</code></td><td>根目錄。金鑰一律走環境變數，不進 commit</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 style="margin-top:32px;margin-bottom:6px;">Firestore 集合（建議，待你確認）</h3>
+    <p class="lead">所有文件都有 <code>createdAt</code> / <code>updatedAt</code> / <code>deletedAt</code>；刪除一律寫 <code>deletedAt</code>，查詢時以 <code>deletedAt == null</code> 排除。</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>路徑</th><th>主要欄位</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td><code>groups/{gid}</code></td><td>name, ownerUid, roles{uid→owner|admin|viewer}, memberUids[]</td><td>權限判斷的單一來源。roles 放在群組文件上，Rules 只需一次 get()</td></tr>
+        <tr><td><code>groups/{gid}/invites/{inviteId}</code></td><td>tokenHash, role, expiresAt, revokedAt, createdBy</td><td>只存 hash，明碼 token 只出現在連結。前端不可讀</td></tr>
+        <tr><td><code>groups/{gid}/members/{uid}</code></td><td>displayName, photoURL, joinedAt, enrolledSubjectIds[]</td><td>「我修的科目」存這裡，自己可寫自己那筆</td></tr>
+        <tr><td><code>groups/{gid}/semesters/{semId}</code></td><td>name, startDate, endDate, isActive</td><td>同時只有一個 isActive</td></tr>
+        <tr><td><code>…/semesters/{semId}/subjects/{subId}</code></td><td>name, shortName(≤3), colorIndex(0–11), schedule[{weekday,start,end}], currentChapterId, order</td><td>schedule 供「下堂課」計算</td></tr>
+        <tr><td><code>…/subjects/{subId}/chapters/{chapId}</code></td><td>title, parentId, order, depth, hasKeyPoints</td><td>兩層樹（章／小節）。hasKeyPoints 供進度頁缺重點標示</td></tr>
+        <tr><td><code>…/subjects/{subId}/items/{itemId}</code></td><td>type, title, body, dueAt, chapterId, gid, semId, subId, createdBy</td><td>作業／關鍵字／檔案／連結共用一個集合。gid/semId/subId 為了 collection group 查詢而反正規化</td></tr>
+        <tr><td><code>userGroups/{uid}/groups/{gid}</code></td><td>role, groupName, joinedAt</td><td>多群組切換的索引，由 Functions 維護</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 style="margin-top:32px;margin-bottom:6px;">需要的複合索引</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>集合</th><th>欄位</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>items</code> (CG)</td><td>gid ↑, type ↑, deletedAt ↑, dueAt ↑</td><td>總覽頁 7 天內作業</td></tr>
+        <tr><td>2</td><td><code>items</code> (CG)</td><td>subId ↑, type ↑, deletedAt ↑, dueAt ↑</td><td>作業頁依科目篩選</td></tr>
+        <tr><td>3</td><td><code>items</code> (CG)</td><td>chapterId ↑, deletedAt ↑, createdAt ↓</td><td>筆記頁、進度頁掛在章節下的內容</td></tr>
+        <tr><td>4</td><td><code>chapters</code></td><td>deletedAt ↑, parentId ↑, order ↑</td><td>章節樹載入與排序</td></tr>
+        <tr><td>5</td><td><code>subjects</code></td><td>deletedAt ↑, order ↑</td><td>科目清單</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 style="margin-top:32px;margin-bottom:6px;">三個關鍵流程</h3>
+    <div class="flow">
+      <div class="f">
+        <h3><span class="s">A</span>邀請連結加入</h3>
+        <ol>
+          <li>管理者建立邀請 → 產生隨機 token，Firestore 只存 <code>tokenHash</code></li>
+          <li>檢視者開 <code>/join/:token</code>，Google 登入</li>
+          <li>前端呼叫 Callable <code>joinByInvite(token)</code></li>
+          <li>Function 驗 hash、檢查 <code>expiresAt</code> / <code>revokedAt</code></li>
+          <li>Admin SDK 寫入 <code>roles[uid]='viewer'</code> 與 <code>userGroups</code></li>
+          <li>導向「選擇我修的科目」</li>
+        </ol>
+        <p class="lead" style="margin:10px 0 0;font-size:12.5px;">非成員無法通過 Rules 寫 roles，所以這步一定要後端。重新產生 token 只需更新 <code>tokenHash</code>，舊連結自然失效。</p>
+      </div>
+      <div class="f">
+        <h3><span class="s">B</span>貼上目錄批次建章節</h3>
+        <ol>
+          <li>精靈步驟 2 貼上整段文字</li>
+          <li>前端呼叫 <code>parseOutline()</code>（packages/shared）</li>
+          <li>即時顯示解析結果，可手動修正</li>
+          <li>確認後以 <code>writeBatch()</code> 一次寫入 chapters</li>
+          <li><code>order</code> 以 100 為間隔，之後插入不必重排全部</li>
+        </ol>
+        <p class="lead" style="margin:10px 0 0;font-size:12.5px;">解析是純函式，所有格式變化都在 Vitest 裡測，不依賴 Firestore。</p>
+      </div>
+      <div class="f">
+        <h3><span class="s">C</span>「下堂課」日期</h3>
+        <ol>
+          <li>取科目 <code>schedule[]</code>（星期 + 節次時間）</li>
+          <li>以 Asia/Taipei 的「現在」為基準，不讀瀏覽器時區</li>
+          <li>往後掃描候選上課日</li>
+          <li>比對 <code>holidays.json</code>，命中就跳過</li>
+          <li>回傳第一個成立的日期時間</li>
+        </ol>
+        <p class="lead" style="margin:10px 0 0;font-size:12.5px;">「下週同一堂」＝同一 weekday + 7 天再跳假日；「明天」不跳假日。三者共用同一個時區工具。</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:32px;margin-bottom:6px;">Security Rules 判斷邏輯摘要</h3>
+    <p class="lead">綠條＝允許路徑，紅條＝必須拒絕且要有對應測試。實際權限表以你的規格書第 3 節為準，下面是依你訊息推得的版本。</p>
+    <div class="rules">
+      <div class="rule"><div class="rt">roleOf(gid) = get(/groups/$(gid)).data.roles[request.auth.uid]</div><div class="rd">唯一權限來源。isMember = roleOf != null；isAdmin = roleOf in ['admin','owner']；isOwner = roleOf == 'owner'。</div></div>
+      <div class="rule"><div class="rt">read: isSignedIn() &amp;&amp; appCheck &amp;&amp; isMember(gid) &amp;&amp; resource.data.deletedAt == null</div><div class="rd">三種角色都能讀自己群組的未刪除資料。檢視者可讀全部科目，前端才依「我修的科目」過濾。</div></div>
+      <div class="rule"><div class="rt">create / update（科目、章節、內容項目）: isAdmin(gid)</div><div class="rd">檢視者一律不能寫內容。</div></div>
+      <div class="rule deny"><div class="rt">allow delete: if false</div><div class="rd">完全禁止硬刪除。刪除只能是 update 把 deletedAt 由 null 設成 request.time，且不得改回 null。</div></div>
+      <div class="rule"><div class="rt">groups/{gid} 的 roles 欄位: isOwner(gid)</div><div class="rd">指派／移除管理者。轉移擁有者必須同一次 update 內同時改 ownerUid 與 roles，且新擁有者原本是成員。</div></div>
+      <div class="rule"><div class="rt">members/{uid}.enrolledSubjectIds: request.auth.uid == uid</div><div class="rd">「我修的科目」只能改自己那筆，不能改別人的。</div></div>
+      <div class="rule deny"><div class="rt">invites/**: allow read, write: if false</div><div class="rd">邀請文件完全不經前端，只由 Functions 以 Admin SDK 存取。</div></div>
+      <div class="rule"><div class="rt">storage: isAdmin(gid) &amp;&amp; size &lt; 30 * 1024 * 1024 &amp;&amp; !contentType.matches('video/.*')</div><div class="rd">讀取為該群組成員；寫入僅管理者。三個條件各自要有拒絕案例。</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== UI ===================== -->
+  <section id="ui">
+    <div class="sechead">
+      <span class="n">03</span>
+      <h2>UI 介面</h2>
+      <span class="eyebrow">像素復古 · 手機優先</span>
+    </div>
+    <p class="lead">下面四個畫面是階段一的主要流程。所有可點元件觸控範圍 ≥ 44×44px，按下時硬陰影消失、位移 3px，動畫用 steps()。狀態一律「顏色 + 符號／圖樣」雙重編碼。</p>
+
+    <div class="tokrow">
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:10px;">文字色對比</p>
+        <div class="contrast">
+          <div class="cline"><span class="demo" style="color:#008751;">已完成 ✓ 進度正常</span><span class="ratio">4.58:1 AA</span></div>
+          <div class="cline"><span class="demo" style="color:#C4003B;">▲ 缺重點 / 逾期</span><span class="ratio">6.16:1 AA</span></div>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6;">對白底計算。#008751 是 4.58:1，只勉強過 AA 的 4.5，不可再加透明度或用在更亮的底色上。深色底需另一組綠／紅 — 見待確認 #3。</p>
+      </div>
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom:10px;">像素字級（僅這三種）</p>
+        <div class="sizes">
+          <div><b class="s33">33</b><small>頁面標題</small></div>
+          <div><b class="s22">22</b><small>區塊標題 / 數字</small></div>
+          <div><b class="s11">11</b><small>按鈕 / 標籤 / 導覽</small></div>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.6;">俐方體 Cubic 11 需自行下載並子集化成 woff2，用 unicode-range 分片。使用者輸入的長內容與 LaTeX 改用 Noto Sans TC + KaTeX，不受 11/22/33 限制。</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:22px;">
+      <p class="eyebrow" style="margin-bottom:10px;">科目 12 色（色塊僅輔助，一律搭配 3 字簡稱文字）</p>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#1D2B53;"><span>01</span></div><div class="nm">#1D2B53</div></div>
+        <div class="sw"><div class="chip" style="background:#7E2553;"><span>02</span></div><div class="nm">#7E2553</div></div>
+        <div class="sw"><div class="chip" style="background:#008751;"><span>03</span></div><div class="nm">#008751</div></div>
+        <div class="sw"><div class="chip" style="background:#AB5236;"><span>04</span></div><div class="nm">#AB5236</div></div>
+        <div class="sw"><div class="chip" style="background:#5F574F;"><span>05</span></div><div class="nm">#5F574F</div></div>
+        <div class="sw"><div class="chip" style="background:#C4003B;"><span>06</span></div><div class="nm">#C4003B</div></div>
+        <div class="sw"><div class="chip" style="background:#B54A00;"><span>07</span></div><div class="nm">#B54A00</div></div>
+        <div class="sw"><div class="chip" style="background:#7B4BD8;"><span>08</span></div><div class="nm">#7B4BD8</div></div>
+        <div class="sw"><div class="chip" style="background:#2B6FCF;"><span>09</span></div><div class="nm">#2B6FCF</div></div>
+        <div class="sw"><div class="chip" style="background:#006D75;"><span>10</span></div><div class="nm">#006D75</div></div>
+        <div class="sw"><div class="chip" style="background:#A3005E;"><span>11</span></div><div class="nm">#A3005E</div></div>
+        <div class="sw"><div class="chip" style="background:#3F5B00;"><span>12</span></div><div class="nm">#3F5B00</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.6;">這 12 色是我依 #008751 / #C4003B 的風格補齊的提案，全部可承載白色簡稱文字。規格書第 7 節若已定義別的色票，以你的為準。</p>
+    </div>
+
+    <div class="phones">
+
+      <!-- A 總覽 -->
+      <div class="phone">
+        <p class="cap">A · 總覽（7 天內作業）</p>
+        <div class="screen">
+          <div class="sbar"><span class="dot" aria-hidden="true"></span><span>進度本</span><span class="r">9:41</span></div>
+          <div class="shead">
+            <div class="gsw"><b>資工二甲 ▾</b><span class="car">114-1 學期</span></div>
+            <div class="ttl">總覽</div>
+          </div>
+          <div class="sbody">
+            <p class="eyebrow">7 天內 · 4 件</p>
+            <div class="hw">
+              <span class="sq" style="background:#C4003B;border-color:#C4003B;">微積</span>
+              <span class="tx"><b>習題 3-2 第 1~15 題</b><small>明天 09:10 交</small></span>
+              <span class="d urgent">D-1</span>
+            </div>
+            <div class="hw">
+              <span class="sq" style="background:#2B6FCF;border-color:#2B6FCF;">計概</span>
+              <span class="tx"><b>期中報告主題確認</b><small>09/25 (五) 下堂課</small></span>
+              <span class="d soon">D-3</span>
+            </div>
+            <div class="hw">
+              <span class="sq" style="background:#008751;border-color:#008751;">線代</span>
+              <span class="tx"><b>矩陣運算作業</b><small>09/27 (日) 23:59</small></span>
+              <span class="d ok">D-5</span>
+            </div>
+            <div class="hw">
+              <span class="sq" style="background:#7E2553;border-color:#7E2553;">國文</span>
+              <span class="tx"><b>讀書心得 800 字</b><small>09/29 (二) 下週同一堂</small></span>
+              <span class="d ok">D-7</span>
+            </div>
+          </div>
+          <div class="bnav">
+            <a href="#ui" class="act" aria-label="總覽">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5"/><rect x="9" y="2" width="5" height="5"/><rect x="2" y="9" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/></svg>
+              總覽</a>
+            <a href="#ui" aria-label="作業">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="10" height="2"/><rect x="3" y="4" width="2" height="10"/><rect x="11" y="4" width="2" height="10"/><rect x="3" y="12" width="10" height="2"/><rect x="6" y="6" width="5" height="2"/><rect x="6" y="9" width="5" height="2"/></svg>
+              作業</a>
+            <a href="#ui" aria-label="筆記">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="9" height="12"/><rect x="5" y="5" width="5" height="1" fill="#FFF1E8"/><rect x="5" y="8" width="5" height="1" fill="#FFF1E8"/><rect x="5" y="11" width="3" height="1" fill="#FFF1E8"/></svg>
+              筆記</a>
+            <a href="#ui" aria-label="進度">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="10" width="3" height="4"/><rect x="6" y="6" width="3" height="8"/><rect x="10" y="2" width="3" height="12"/></svg>
+              進度</a>
+            <a href="#ui" aria-label="設定">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="6" y="2" width="4" height="2"/><rect x="6" y="12" width="4" height="2"/><rect x="2" y="6" width="2" height="4"/><rect x="12" y="6" width="2" height="4"/><rect x="5" y="5" width="6" height="6"/><rect x="7" y="7" width="2" height="2" fill="#FFF1E8"/></svg>
+              設定</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- B 進度 -->
+      <div class="phone">
+        <p class="cap">B · 進度（含缺重點標示）</p>
+        <div class="screen">
+          <div class="sbar"><span class="dot" aria-hidden="true"></span><span>進度本</span><span class="r">9:41</span></div>
+          <div class="shead">
+            <div class="gsw"><b>微積分 ▾</b><span class="car">簡稱 微積</span></div>
+            <div class="ttl">進度</div>
+          </div>
+          <div class="sbody">
+            <div class="tree">
+              <div class="tnode"><span class="ic">▾</span><span>第一章 極限</span><span style="margin-left:auto;font-family:var(--px);font-size:11px;color:var(--green);">✓ 完成</span></div>
+              <div class="tnode sub"><span class="ic">·</span><span>1-1 數列極限</span></div>
+              <div class="tnode sub"><span class="ic">·</span><span>1-2 連續</span></div>
+              <div class="tnode cur"><span class="ic">▾</span><span>第二章 微分</span><span class="flag">▶ 目前</span></div>
+              <div class="tnode sub"><span class="ic">·</span><span>2-1 導數定義</span></div>
+              <div class="tnode sub miss"><span class="ic">·</span><span>2-2 連鎖律</span><span class="flag">▲ 缺重點</span></div>
+              <div class="tnode sub miss"><span class="ic">·</span><span>2-3 隱函數</span><span class="flag">▲ 缺重點</span></div>
+              <div class="tnode"><span class="ic">▸</span><span style="color:var(--muted);">第三章 積分</span><span style="margin-left:auto;font-family:var(--px);font-size:11px;color:var(--muted);">未開始</span></div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:4px;">缺重點＝紅框 + 斜線底紋 + ▲ 符號，三重編碼，不只靠顏色。</p>
+          </div>
+          <div class="bnav">
+            <a href="#ui" aria-label="總覽"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5"/><rect x="9" y="2" width="5" height="5"/><rect x="2" y="9" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/></svg>總覽</a>
+            <a href="#ui" aria-label="作業"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="10" height="2"/><rect x="3" y="4" width="2" height="10"/><rect x="11" y="4" width="2" height="10"/><rect x="3" y="12" width="10" height="2"/><rect x="6" y="6" width="5" height="2"/><rect x="6" y="9" width="5" height="2"/></svg>作業</a>
+            <a href="#ui" aria-label="筆記"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="9" height="12"/><rect x="5" y="5" width="5" height="1" fill="#FFF1E8"/><rect x="5" y="8" width="5" height="1" fill="#FFF1E8"/><rect x="5" y="11" width="3" height="1" fill="#FFF1E8"/></svg>筆記</a>
+            <a href="#ui" class="act" aria-label="進度"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="10" width="3" height="4"/><rect x="6" y="6" width="3" height="8"/><rect x="10" y="2" width="3" height="12"/></svg>進度</a>
+            <a href="#ui" aria-label="設定"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="6" y="2" width="4" height="2"/><rect x="6" y="12" width="4" height="2"/><rect x="2" y="6" width="2" height="4"/><rect x="12" y="6" width="2" height="4"/><rect x="5" y="5" width="6" height="6"/><rect x="7" y="7" width="2" height="2" fill="#FFF1E8"/></svg>設定</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- C 新增作業 -->
+      <div class="phone">
+        <p class="cap">C · 新增作業（快速日期）</p>
+        <div class="screen">
+          <div class="sbar"><span class="dot" aria-hidden="true"></span><span>新增作業</span><span class="r">✕</span></div>
+          <div class="sbody" style="padding-top:12px;">
+            <div class="field"><span class="lb">科目</span><span class="vl">微積分 · 微積</span></div>
+            <div class="field"><span class="lb">標題</span><span class="vl">習題 3-2 第 1~15 題</span></div>
+            <div class="field"><span class="lb">章節</span><span class="vl">第三章 積分 › 3-2 分部積分</span></div>
+            <div>
+              <p class="eyebrow" style="margin-bottom:6px;">到期日</p>
+              <div class="qdates">
+                <span class="qd sel">下堂課</span>
+                <span class="qd">下週同一堂</span>
+                <span class="qd">明天</span>
+                <span class="qd">自訂</span>
+              </div>
+              <p style="font-size:11px;color:var(--green);margin-top:7px;font-family:var(--mono);">→ 2026/09/25 (五) 09:10</p>
+              <p style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.6;">已跳過 09/24 中秋節補假</p>
+            </div>
+            <div style="flex:1;"></div>
+            <div style="display:flex;gap:8px;">
+              <span class="btn ghost" style="flex:1;">取消</span>
+              <span class="btn" style="flex:2;">新增</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- D 設定精靈 -->
+      <div class="phone">
+        <p class="cap">D · 開學設定精靈 · 步驟 2</p>
+        <div class="screen">
+          <div class="sbar"><span class="dot" aria-hidden="true"></span><span>設定精靈</span><span class="r">2/3</span></div>
+          <div class="shead">
+            <div class="ttl" style="font-size:22px;">貼上目錄</div>
+            <p style="font-size:11.5px;color:var(--muted);margin-top:4px;">把課本或教學大綱的目錄整段貼上</p>
+          </div>
+          <div class="sbody">
+            <div class="pastebox">第一章　極限
+  1-1 數列極限
+  1-2 連續
+
+第2章 微分
+  2.1 導數定義
+  2.2 連鎖律
+Chapter 3  Integration</div>
+            <div class="parsed">
+              <b>解析結果 · 3 章 4 節</b>
+              ▸ 第一章 極限<br>
+              &nbsp;&nbsp;· 1-1 數列極限　· 1-2 連續<br>
+              ▸ 第 2 章 微分<br>
+              &nbsp;&nbsp;· 2.1 導數定義　· 2.2 連鎖律<br>
+              ▸ Chapter 3 Integration
+            </div>
+            <p style="font-size:11px;color:var(--muted);line-height:1.6;">空行與多餘空白已忽略。可在下一步手動改名或刪除。</p>
+            <div style="flex:1;"></div>
+            <div style="display:flex;gap:8px;">
+              <span class="btn ghost" style="flex:1;">上一步</span>
+              <span class="btn" style="flex:2;">建立 7 個節點</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== 待確認 ===================== -->
+  <section id="todo">
+    <div class="sechead">
+      <span class="n">04</span>
+      <h2>待你確認</h2>
+      <span class="eyebrow">動工前需拍板</span>
+    </div>
+    <p class="lead">這些是規格書缺席造成的空白，我沒有自行當成決定。逐條回覆後我再調整藍圖，然後才進到實作計畫與開發順序。</p>
+
+    <div class="checklist">
+      <div class="chk"><span class="mk">01</span><div class="bd"><b>規格書第 3 節權限表</b><small>我依你訊息推了一版三角色（擁有者／管理者／檢視者）的規則。原表若有更細的動作（例如檢視者能不能上傳檔案、管理者能不能刪學期），要完整給我才寫得出「每個角色每個動作」的測試。</small></div></div>
+      <div class="chk"><span class="mk">02</span><div class="bd"><b>規格書第 7 節配色</b><small>你只給了 #008751 與 #C4003B。科目 12 色我補了一版提案，需要你確認或換成原本的色票。</small></div></div>
+      <div class="chk"><span class="mk">03</span><div class="bd"><b>深色模式要不要做</b><small>#008751 在深色底無法達 AA。若階段一要支援深色，需要再定一組深色專用的綠／紅；若不做，就鎖定淺色單一主題。</small></div></div>
+      <div class="chk"><span class="mk">04</span><div class="bd"><b>02_test-log 第三部分的 UI 修正</b><small>你列出的修正我都套了（混合字型、11/22/33、雙重編碼、44×44、硬陰影位移、steps()、16×16 圖示、aria）。但原文若還有其他條目，我看不到。</small></div></div>
+      <div class="chk"><span class="mk">05</span><div class="bd"><b>章節樹幾層</b><small>我假設兩層（章／小節），因為目錄解析的輸出就是兩層。若要支援三層以上，chapters 的 parentId / depth / 排序邏輯要一起改。</small></div></div>
+      <div class="chk"><span class="mk">06</span><div class="bd"><b>「缺重點」的定義</b><small>我暫定為：該章節底下沒有任何 type='keyword' 的未刪除項目。這個定義會直接影響 Firestore 要不要存 hasKeyPoints 快取欄位。</small></div></div>
+      <div class="chk"><span class="mk">07</span><div class="bd"><b>檢視者看不看得到未選科目</b><small>我的 Rules 讓檢視者讀得到全群組資料，只在前端過濾。若要真的擋住，Rules 需要逐科目檢查 enrolledSubjectIds，讀取成本會上升。</small></div></div>
+      <div class="chk"><span class="mk">08</span><div class="bd"><b>舊原型要不要沿用</b><small><code>D:\專案\歐趴EZ\index.html</code> 是單檔 Vue 3 + Tailwind 的舊版。新專案是 React + Vite + 無 UI 框架，兩者不相容。確認是整個重寫，還是要搬某些邏輯過來。</small></div></div>
+      <div class="chk"><span class="mk">09</span><div class="bd"><b>holidays.json 的核對</b><small>2026–2027 學年的台灣國定假日我會先建一版，但<b>一定要你人工核對</b>，並額外補上學校行事曆的停課日（颱風假、校慶、運動會、期中考週停課等），這些行政院公告裡沒有。</small></div></div>
+    </div>
+
+    <h3 style="margin-top:32px;margin-bottom:6px;">需要你手動操作的事（實作前）</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>項目</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>建立 Firebase 專案</td><td>正式 + 測試兩個環境</td></tr>
+        <tr><td>2</td><td>升級 Blaze 方案</td><td>Cloud Functions v2 必需</td></tr>
+        <tr><td>3</td><td>啟用 Google 登入</td><td>Authentication → Sign-in method</td></tr>
+        <tr><td>4</td><td>設定 App Check</td><td>註冊 reCAPTCHA Enterprise 網站金鑰，取得 debug token 供本機用</td></tr>
+        <tr><td>5</td><td>建立 Firestore 與 Storage</td><td>選 asia-east1 或 asia-northeast1</td></tr>
+        <tr><td>6</td><td>取得 Web App 設定值</td><td>apiKey 等六個值，填進 <code>.env</code>（<code>.env.example</code> 進 repo，<code>.env</code> 不進）</td></tr>
+        <tr><td>7</td><td>下載 Cubic 11 字型</td><td>確認授權，交給我做 woff2 子集化與 unicode-range 分片</td></tr>
+        <tr><td>8</td><td>提供學校行事曆</td><td>停課日清單，補進 holidays.json</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    進度本 · 階段一架構藍圖 · 2026-09-22 · 本文件依使用者訊息重建，規格書原文缺席，所有推定項目已列於第 04 節。
+  </footer>
+</div>
+</body>
+</html>

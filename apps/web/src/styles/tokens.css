@@ -1,0 +1,92 @@
+/* =============================================================================
+   設計 token —— 像素復古風。
+   完整的 token 與字型子集化於階段一步驟 5 實作，這裡先放最小可用的一組，
+   讓骨架畫面有正確的底色與字級規則。
+
+   規則備忘：
+   - 像素字級只用 11 / 22 / 33px，因為 Cubic 11 是 11x11 點陣，
+     只有整數倍才不會糊。使用者輸入的長內容與公式改用 Noto Sans TC + KaTeX。
+   - 所有可點元件的觸控範圍至少 44x44px。
+   - 按下時硬陰影消失、位移 3px，動畫用 steps()。
+   - 狀態不能只靠顏色區分，一律搭配符號或圖樣。
+   ========================================================================== */
+
+:root {
+  --ground: #fff1e8;
+  --panel: #ffffff;
+  --ink: #1d2b53;
+  --muted: #5c668c;
+  --line: #1d2b53;
+
+  /* 放文字的綠色與紅色，對白底分別為 4.58:1 與 6.16:1，皆達 WCAG AA。 */
+  --green: #008751;
+  --red: #c4003b;
+
+  --shadow: #1d2b53;
+
+  --px-font: 'Cubic 11', 'Noto Sans TC', system-ui, sans-serif;
+  --body-font: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+
+  --px-sm: 11px;
+  --px-md: 22px;
+  --px-lg: 33px;
+
+  --tap-min: 44px;
+  --press-offset: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.shell {
+  max-width: 480px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 32px;
+}
+
+.eyebrow {
+  font-family: var(--px-font);
+  font-size: var(--px-sm);
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin: 0;
+}
+
+h1 {
+  font-family: var(--px-font);
+  font-size: var(--px-lg);
+  margin: 8px 0 24px;
+}
+
+.probe {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--press-offset) var(--press-offset) 0 var(--shadow);
+  padding: 16px;
+}
+
+.probe dt {
+  font-family: var(--px-font);
+  font-size: var(--px-sm);
+  color: var(--muted);
+}
+
+.probe dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}

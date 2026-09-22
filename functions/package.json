@@ -1,0 +1,24 @@
+{
+  "name": "@jindu/functions",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "engines": { "node": "20" },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "serve": "pnpm build && firebase emulators:start --only functions"
+  },
+  "dependencies": {
+    "@jindu/shared": "workspace:*",
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

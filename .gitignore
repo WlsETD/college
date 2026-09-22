@@ -1,0 +1,23 @@
+node_modules/
+dist/
+lib/
+coverage/
+.DS_Store
+
+# 環境變數：只有 .env.example 進版控
+.env
+.env.*
+!.env.example
+
+# Firebase
+.firebase/
+.emulator-data/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# 憑證：一律不得進版控
+*serviceAccount*.json
+*.pem
+*.key

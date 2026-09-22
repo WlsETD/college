@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// =============================================================================
+// 進度本 Firestore 安全規則
+//
+// 目前為階段一步驟 1 的佔位版本：一律拒絕。
+// 完整規則於步驟 3 實作，屆時會依 groups/{gid}.roles 判斷權限，
+// 並以 @firebase/rules-unit-testing 為規格書第 3 節權限表的每一格
+// 各寫一個「允許」與「拒絕」測試案例。
+//
+// 注意：App Check 的強制不寫在這裡。request.app 在 Emulator 中不受支援，
+// 寫進規則會讓規則測試整批失敗。App Check 應在 Firebase Console 對
+// Firestore / Storage / Functions 分別開啟 enforcement。
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
