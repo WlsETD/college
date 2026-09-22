@@ -3,18 +3,68 @@ rules_version = '2';
 // =============================================================================
 // 進度本 Storage 安全規則
 //
-// 階段一步驟 1 佔位版本：一律拒絕。步驟 3 實作完整規則，需滿足：
-//   1. 讀取：該群組成員
-//   2. 寫入：該群組管理者（admin / owner）
+// 依 docs/01_spec_section3.md 第 3.2 節的 Storage 段落實作：
+//   1. 下載：該群組的成員（owner / admin / viewer）
+//   2. 上傳：該群組的管理者（owner / admin）
 //   3. 單檔上限 30 MB
 //   4. 拒絕 video/*
-// 上述四項各自都要有對應的拒絕測試案例。
+//   5. 刪除物件：一律拒絕（檔案的「刪除」只是把對應的 item 軟刪除，
+//      實體檔案保留，之後由排程 Function 清理——那是階段二的工作）
+//
+// 權限同樣以 Firestore 的 groups/{gid}.roles 為單一來源，
+// 用跨服務規則 firestore.get() 讀取。
+//
+// App Check 的強制不寫在這裡，理由同 firestore.rules。
+//
+// 路徑慣例：groups/{gid}/... 。不在 groups/ 底下的物件沒有任何 allow，
+// 依預設一律拒絕。
 // =============================================================================
 
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if false;
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function groupPath(gid) {
+      return /databases/(default)/documents/groups/$(gid);
+    }
+
+    function roleOf(gid) {
+      return isSignedIn() && firestore.exists(groupPath(gid))
+        ? firestore.get(groupPath(gid)).data.roles.get(request.auth.uid, null)
+        : null;
+    }
+
+    function isMember(gid) {
+      return roleOf(gid) != null;
+    }
+
+    function isManager(gid) {
+      // 先確認是成員再比對，避免 null in [...] 觸發 rules 的求值錯誤。
+      return isMember(gid) && roleOf(gid) in ['admin', 'owner'];
+    }
+
+    // 單檔 30 MB。
+    function withinSizeLimit() {
+      return request.resource.size <= 30 * 1024 * 1024;
+    }
+
+    // 拒絕 video/*，也拒絕沒有宣告 contentType 的上傳。
+    function contentTypeAllowed() {
+      return request.resource.contentType is string
+        && !request.resource.contentType.matches('video/.*');
+    }
+
+    match /groups/{gid}/{allPaths=**} {
+      allow read: if isMember(gid);
+
+      allow create, update: if isManager(gid)
+        && withinSizeLimit()
+        && contentTypeAllowed();
+
+      allow delete: if false;
     }
   }
 }

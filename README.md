@@ -2,9 +2,10 @@
 
 大學班級共用的課程進度、作業提醒與考試重點複習工具。
 
-> **目前進度：階段一步驟 2 / 8。**
-> 專案骨架與 `packages/shared` 的純函式已完成，Firestore 安全規則仍是「一律拒絕」的佔位版本。
-> 架構藍圖見 [`docs/00_architecture.html`](docs/00_architecture.html)。
+> **目前進度：階段一步驟 3 / 8。**
+> 專案骨架、`packages/shared` 的純函式、Firestore／Storage 安全規則與權限表測試已完成。
+> 架構藍圖見 [`docs/00_architecture.html`](docs/00_architecture.html)，
+> 權限規格見 [`docs/01_spec_section3.md`](docs/01_spec_section3.md)。
 
 ---
 
@@ -79,14 +80,32 @@ pnpm typecheck   # 型別檢查
 pnpm build       # 前端 + Functions 打包
 ```
 
-目前涵蓋 `packages/shared` 的 115 個單元測試。安全規則測試於步驟 3 加入，
-屆時需要 Emulator 在背景執行。
+目前共 397 個測試：
+
+| 套件 | 數量 | 內容 |
+| --- | --- | --- |
+| `packages/shared` | 115 | 時區、目錄解析、下堂課、關鍵字、假日的純函式 |
+| `packages/rules-tests` | 282 | Firestore 與 Storage 安全規則，逐格對應權限表 |
+
+規則測試會自己用 `firebase emulators:exec` 起一組乾淨的 Firestore／Storage 模擬器
+（專案 id 固定 `demo-jindu`），不必事先手動啟動；但**如果你已經在跑 `pnpm emu`，
+連接埠 8080 / 9199 會衝突**，請先停掉再跑測試。
+
+只想跑規則測試：
+
+```bash
+pnpm --filter @jindu/rules-tests test
+```
 
 ## 目錄結構
 
 ```
 apps/web/            React + Vite + TypeScript，PWA。LIFF 頁面同一個 app，用路由區分
 functions/           Cloud Functions v2，TypeScript
+packages/rules-tests/ 安全規則測試（@firebase/rules-unit-testing + Emulator）
+  test/firestore.group.test.ts    群組、邀請、成員
+  test/firestore.content.test.ts  學期、科目、章節、內容項目、軟刪除與復原
+  test/storage.test.ts            下載、上傳、30 MB、video/*、刪除物件
 packages/shared/     共用型別與純函式，前端與 Functions 共用
   src/tz.ts            Asia/Taipei 固定時區工具
   src/outline.ts       目錄文字解析
@@ -127,6 +146,6 @@ Firebase CLI 至今無法正確處理 pnpm workspaces 的 symlink 相依
 ## 待辦
 
 - [ ] `packages/shared/data/holidays.json` **尚未經人工核對**，且不含學校行事曆的停課日
-- [ ] 安全規則與權限表測試（步驟 3）
+- [x] 安全規則與權限表測試（步驟 3）
 - [ ] Firebase 專案、Blaze 方案、App Check 設定（需手動操作）
 - [ ] Cubic 11 字型子集化與 unicode-range 分片（步驟 5）

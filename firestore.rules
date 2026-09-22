@@ -3,20 +3,297 @@ rules_version = '2';
 // =============================================================================
 // 進度本 Firestore 安全規則
 //
-// 目前為階段一步驟 1 的佔位版本：一律拒絕。
-// 完整規則於步驟 3 實作，屆時會依 groups/{gid}.roles 判斷權限，
-// 並以 @firebase/rules-unit-testing 為規格書第 3 節權限表的每一格
-// 各寫一個「允許」與「拒絕」測試案例。
+// 依 docs/01_spec_section3.md 第 3.4 節實作，權限表見同文件第 3.2 節。
 //
-// 注意：App Check 的強制不寫在這裡。request.app 在 Emulator 中不受支援，
-// 寫進規則會讓規則測試整批失敗。App Check 應在 Firebase Console 對
-// Firestore / Storage / Functions 分別開啟 enforcement。
+// 三個大原則：
+//   1. 權限的單一來源是 groups/{gid}.roles，規則只讀這個欄位。
+//   2. delete 動作一律拒絕。刪除只能是 update，把 deletedAt 從 null 改成
+//      request.time；復原則是改回 null，只開給擁有者與管理者。
+//   3. App Check 的強制「不」寫在這裡。request.app 在 Emulator 中不受支援，
+//      寫進規則會讓規則測試整批失敗。請在 Firebase Console 對 Firestore /
+//      Storage 分別開啟 enforcement，Cloud Functions 用 enforceAppCheck: true。
+//
+// 另注意：notDeleted() 無法在 list 查詢時替你過濾資料。只要結果集裡「可能」
+// 包含 deletedAt 不為 null 的文件，整個查詢就會 permission-denied，因此前端
+// 每一個查詢都必須自己帶 where('deletedAt', '==', null)。
 // =============================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // -------------------------------------------------------------------------
+    // 身分
+    // -------------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function authUid() {
+      return request.auth.uid;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && authUid() == uid;
+    }
+
+    function groupPath(gid) {
+      return /databases/$(database)/documents/groups/$(gid);
+    }
+
+    // 回傳目前使用者在該群組的角色；不是成員（或群組不存在）就是 null。
+    function roleOf(gid) {
+      return isSignedIn() && exists(groupPath(gid))
+        ? get(groupPath(gid)).data.roles.get(authUid(), null)
+        : null;
+    }
+
+    function isMember(gid) {
+      return roleOf(gid) != null;
+    }
+
+    function isManager(gid) {
+      // 先確認是成員再比對，避免 null in [...] 觸發 rules 的求值錯誤。
+      return isMember(gid) && roleOf(gid) in ['admin', 'owner'];
+    }
+
+    // -------------------------------------------------------------------------
+    // 軟刪除
+    // -------------------------------------------------------------------------
+
+    function notDeleted() {
+      return resource.data.deletedAt == null;
+    }
+
+    // 新文件必須是未刪除狀態。
+    function createdActive() {
+      return request.resource.data.deletedAt == null;
+    }
+
+    // 軟刪除：deletedAt 由 null 變成 request.time（前端寫 serverTimestamp()）。
+    // 先確認型別是 timestamp，否則寫入一個數字會讓 == 比較觸發求值錯誤。
+    function isSoftDelete() {
+      return resource.data.deletedAt == null
+        && request.resource.data.deletedAt is timestamp
+        && request.resource.data.deletedAt == request.time;
+    }
+
+    // 復原：deletedAt 由非 null 變回 null。
+    function isRestore() {
+      return resource.data.deletedAt != null
+        && request.resource.data.deletedAt == null;
+    }
+
+    function keepsDeletedAt() {
+      return request.resource.data.deletedAt == resource.data.deletedAt;
+    }
+
+    // 一般內容文件（學期／科目／章節／內容項目）的 update 形態。
+    // 三種合法形態：未刪除文件的一般編輯、軟刪除、復原。
+    // 三者都需要管理者權限，所以不再細分。
+    function contentUpdateShape() {
+      return (notDeleted() && keepsDeletedAt())
+        || isSoftDelete()
+        || isRestore();
+    }
+
+    // -------------------------------------------------------------------------
+    // roles 欄位的輔助函式
+    //
+    // rules 沒有迴圈，要判斷「被移除的那個人原本是不是檢視者」只能用計數：
+    // values() 取出所有角色值，removeAll 掉另外兩種，剩下的長度就是該角色人數。
+    // -------------------------------------------------------------------------
+
+    function countOwner(roles)  { return roles.values().removeAll(['admin', 'viewer']).size(); }
+    function countAdmin(roles)  { return roles.values().removeAll(['owner', 'viewer']).size(); }
+    function countViewer(roles) { return roles.values().removeAll(['owner', 'admin']).size(); }
+
+    function rolesValid(roles, ownerUid) {
+      return roles.values().toSet().hasOnly(['owner', 'admin', 'viewer'])
+        && roles.get(ownerUid, null) == 'owner'
+        && countOwner(roles) == 1;
+    }
+
+    // =========================================================================
+    // groups/{gid}
+    // =========================================================================
+    match /groups/{gid} {
+
+      function before() { return resource.data; }
+      function after()  { return request.resource.data; }
+
+      // 群組文件本身可以直接讀 resource，不必再 get() 一次。
+      function myRole()    { return isSignedIn() ? before().roles.get(authUid(), null) : null; }
+      function amMember()  { return myRole() != null; }
+      function amManager() { return amMember() && myRole() in ['admin', 'owner']; }
+      function amOwner()   { return myRole() == 'owner'; }
+
+      function rolesDiff()      { return after().roles.diff(before().roles); }
+      function rolesUntouched() { return rolesDiff().affectedKeys().size() == 0; }
+      function noRolesAdded()   { return rolesDiff().addedKeys().size() == 0; }
+      function ownerUidKept()   { return after().ownerUid == before().ownerUid; }
+
+      // 改名、切換目前學期等一般欄位編輯。不得動到 roles / ownerUid / deletedAt。
+      function isPlainEdit() {
+        return notDeleted() && keepsDeletedAt() && rolesUntouched() && ownerUidKept();
+      }
+
+      function isGroupSoftDelete() {
+        return isSoftDelete() && rolesUntouched() && ownerUidKept();
+      }
+
+      function isGroupRestore() {
+        return isRestore() && rolesUntouched() && ownerUidKept();
+      }
+
+      // 擁有者管理角色：指派管理者、把管理者降回檢視者、踢出成員。
+      // 不能憑空加入新成員（加入一律走邀請連結的 Cloud Function），
+      // 也不能在這裡把擁有者讓出去（那是 isOwnershipTransfer）。
+      function isOwnerRoleEdit() {
+        return notDeleted() && keepsDeletedAt()
+          && ownerUidKept()
+          && noRolesAdded()
+          && rolesValid(after().roles, after().ownerUid)
+          && after().roles.get(authUid(), null) == 'owner';
+      }
+
+      // 轉移擁有者：同一次 update 內同時改 ownerUid 與 roles，
+      // 新擁有者原本已經是成員，舊擁有者不再是擁有者。
+      function isOwnershipTransfer() {
+        return notDeleted() && keepsDeletedAt()
+          && after().ownerUid != before().ownerUid
+          && before().roles.get(after().ownerUid, null) != null
+          && noRolesAdded()
+          && rolesValid(after().roles, after().ownerUid)
+          && after().roles.get(authUid(), null) != 'owner';
+      }
+
+      // 管理者移除檢視者：剛好少一個 viewer，owner／admin 人數不變。
+      function isViewerRemoval() {
+        return notDeleted() && keepsDeletedAt()
+          && ownerUidKept()
+          && rolesDiff().removedKeys().size() == 1
+          && rolesDiff().addedKeys().size() == 0
+          && rolesDiff().changedKeys().size() == 0
+          && after().roles.values().toSet().hasOnly(['owner', 'admin', 'viewer'])
+          && countViewer(after().roles) == countViewer(before().roles) - 1
+          && countAdmin(after().roles) == countAdmin(before().roles)
+          && countOwner(after().roles) == countOwner(before().roles);
+      }
+
+      // 自行退出群組：只移除自己，且自己不是擁有者。
+      function isSelfLeave() {
+        return notDeleted() && keepsDeletedAt()
+          && ownerUidKept()
+          && amMember() && myRole() != 'owner'
+          && rolesDiff().removedKeys().hasOnly([authUid()])
+          && rolesDiff().removedKeys().size() == 1
+          && rolesDiff().addedKeys().size() == 0
+          && rolesDiff().changedKeys().size() == 0;
+      }
+
+      allow read: if amMember() && notDeleted();
+
+      // 建立群組：任何登入使用者都可以，建立者必須是唯一的擁有者。
+      allow create: if isSignedIn()
+        && createdActive()
+        && after().ownerUid == authUid()
+        && rolesValid(after().roles, after().ownerUid);
+
+      allow update: if (amManager() && isPlainEdit())
+        || (amOwner()   && isGroupSoftDelete())
+        || (amManager() && isGroupRestore())
+        || (amOwner()   && isOwnerRoleEdit())
+        || (amOwner()   && isOwnershipTransfer())
+        || (amManager() && isViewerRemoval())
+        || isSelfLeave();
+
+      allow delete: if false;
+
+      // -----------------------------------------------------------------------
+      // groups/{gid}/invites/{inviteId}
+      // 完全不經前端，只由 Cloud Functions 以 Admin SDK 存取（Admin SDK 繞過規則）。
+      // -----------------------------------------------------------------------
+      match /invites/{inviteId} {
+        allow read, write: if false;
+      }
+
+      // -----------------------------------------------------------------------
+      // groups/{gid}/members/{uid}
+      // 只有本人能寫自己這一筆（含「我修的科目」enrolledSubjectIds）。
+      // 移除成員是動 groups/{gid}.roles，不是動這裡。
+      // -----------------------------------------------------------------------
+      match /members/{uid} {
+        allow read:   if isMember(gid) && notDeleted();
+        allow create: if isSelf(uid) && isMember(gid) && createdActive();
+        allow update: if isSelf(uid) && isMember(gid) && keepsDeletedAt();
+        allow delete: if false;
+      }
+
+      // -----------------------------------------------------------------------
+      // groups/{gid}/semesters/{semId}
+      // -----------------------------------------------------------------------
+      match /semesters/{semId} {
+        allow read:   if isMember(gid) && notDeleted();
+        allow create: if isManager(gid) && createdActive();
+        allow update: if isManager(gid) && contentUpdateShape();
+        allow delete: if false;
+
+        // ---------------------------------------------------------------------
+        // .../subjects/{subId}
+        // ---------------------------------------------------------------------
+        match /subjects/{subId} {
+          allow read:   if isMember(gid) && notDeleted();
+          allow create: if isManager(gid) && createdActive();
+          allow update: if isManager(gid) && contentUpdateShape();
+          allow delete: if false;
+
+          // -------------------------------------------------------------------
+          // .../chapters/{chapId}
+          // -------------------------------------------------------------------
+          match /chapters/{chapId} {
+            allow read:   if isMember(gid) && notDeleted();
+            allow create: if isManager(gid) && createdActive();
+            allow update: if isManager(gid) && contentUpdateShape();
+            allow delete: if false;
+          }
+
+          // -------------------------------------------------------------------
+          // .../items/{itemId}
+          // gid / semId / subId 是為了 collection group 查詢而反正規化的欄位，
+          // 必須和實際路徑一致，否則別的群組會透過 collection group 讀到。
+          // -------------------------------------------------------------------
+          match /items/{itemId} {
+            function pathFieldsMatch() {
+              return request.resource.data.gid == gid
+                && request.resource.data.semId == semId
+                && request.resource.data.subId == subId;
+            }
+
+            allow read:   if isMember(gid) && notDeleted();
+            allow create: if isManager(gid) && createdActive() && pathFieldsMatch();
+            allow update: if isManager(gid) && contentUpdateShape() && pathFieldsMatch();
+            allow delete: if false;
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // collection group 查詢 items（總覽頁查 7 天內作業用）。
+    // collection group 查詢比對的是這一條規則，不是巢狀路徑下的那一條。
+    // =========================================================================
+    match /{path=**}/items/{itemId} {
+      allow read: if isMember(resource.data.gid) && notDeleted();
+    }
+
+    // =========================================================================
+    // userGroups/{uid}/groups/{gid}
+    // 多群組切換用的索引，由 Cloud Functions 維護，前端只讀自己的。
+    // =========================================================================
+    match /userGroups/{uid}/groups/{gid} {
+      allow read:  if isSelf(uid);
+      allow write: if false;
     }
   }
 }

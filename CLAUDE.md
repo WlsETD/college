@@ -5,14 +5,20 @@
 
 ---
 
-## 目前進度：階段一，步驟 2 / 8 已完成
+## 目前進度：階段一，步驟 3 / 8 已完成
 
 ```
-882349a 實作 packages/shared 的共用純函式與單元測試   ← 步驟 2
-0401725 建立 Monorepo 骨架與開發環境                  ← 步驟 1
+（本次） 實作 Firestore／Storage 安全規則與權限表逐格測試   ← 步驟 3
+882349a 實作 packages/shared 的共用純函式與單元測試        ← 步驟 2
+0401725 建立 Monorepo 骨架與開發環境                       ← 步驟 1
 ```
 
-驗證狀態：`pnpm test` 115 個測試全過、`pnpm typecheck` 通過、`pnpm build` 通過。
+驗證狀態：`pnpm test` 397 個測試全過（shared 115 + rules-tests 282）、
+`pnpm typecheck` 通過、`pnpm build` 通過。
+
+規則測試放在 `packages/rules-tests`，`test` script 會自己用
+`firebase emulators:exec --project demo-jindu --only firestore,storage` 起模擬器，
+所以 `pnpm test` 一次跑得到。**但它會占用 8080 / 9199，和 `pnpm emu` 衝突。**
 
 ---
 
@@ -32,8 +38,8 @@
 | --- | --- | --- |
 | 1 | pnpm workspaces 骨架、TS/Vitest、Emulator 設定、`.env.example`、README | ✅ 完成 |
 | 2 | `packages/shared` 純函式 + 單元測試 | ✅ 完成 |
-| 3 | Firestore 資料模型 + `firestore.rules` + `storage.rules` + 權限表逐格測試 | ← 下一步 |
-| 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | |
+| 3 | Firestore 資料模型 + `firestore.rules` + `storage.rules` + 權限表逐格測試 | ✅ 完成 |
+| 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | ← 下一步 |
 | 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | |
 | 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | |
 | 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | |
@@ -86,34 +92,34 @@ Cloud Functions 用 `enforceAppCheck: true`（已設於 `functions/src/index.ts`
 | 邀請 token | 只存 SHA-256 hash，token ≥ 128 bit，Functions 端加速率限制 | 明碼只出現在連結裡 |
 | KaTeX | 必須設 `trust: false`、`strict: 'warn'` | 說明欄是使用者輸入，`\href` 可塞 `javascript:` |
 | `.npmrc` | 不使用。`onlyBuiltDependencies` 寫在 `package.json` | |
+| 「移除檢視者」怎麼在規則裡驗 | 規則沒有迴圈，改用計數：`roles.values().removeAll([另外兩種角色]).size()` 得到各角色人數，要求 viewer 少一、admin／owner 不變 | 無法用動態 key 去查被移除者原本的角色 |
+| 角色變更一次只能動一個人 | 移除檢視者／自行退出都限制 `removedKeys().size() == 1` | 讓上面的計數判斷能精確對應到單一動作 |
+| 已軟刪除的文件 | 只能復原，不能一邊維持 `deletedAt` 一邊改內容 | 規格沒寫，取較嚴的一邊；復原時可同時改欄位 |
+| 規則測試套件 | 獨立的 `packages/rules-tests`，`test` script 內含 `firebase emulators:exec` | `pnpm test` 就能一起跑到，不必要求先手動開模擬器 |
 
 ---
 
 ## 尚未拍板的事項
 
-**進入步驟 3 之前必須先問使用者：**
-
-1. **規格書第 3 節的完整權限表。** 目前只有依三角色（owner / admin / viewer）推得的版本。
-   要寫出「每個角色每個動作」的測試，需要原始權限表的每一列，
-   例如檢視者能不能上傳檔案、管理者能不能刪學期。
+（步驟 3 的權限表問題已解決：使用者於 2026-09-22 提供 `docs/01_spec_section3.md`。）
 
 **進入步驟 5 之前必須先問使用者：**
 
-2. **規格書第 7 節的配色。** 目前只確定放文字的綠色 `#008751`、紅色 `#C4003B`。
+1. **規格書第 7 節的配色。** 目前只確定放文字的綠色 `#008751`、紅色 `#C4003B`。
    科目 12 色是提案版本，待確認。
-3. **要不要做深色模式。** `#008751` 在深色底無法達 WCAG AA，
+2. **要不要做深色模式。** `#008751` 在深色底無法達 WCAG AA，
    若要支援需另定一組深色專用的綠／紅。
-4. **Cubic 11 字型檔。** 使用者要提供，交由你做 woff2 子集化與 unicode-range 分片。
+3. **Cubic 11 字型檔。** 使用者要提供，交由你做 woff2 子集化與 unicode-range 分片。
    授權為開源免費可商用。
 
 **隨時可補：**
 
-5. **`packages/shared/data/holidays.json` 尚未經人工核對**（`verified: false`），
+4. **`packages/shared/data/holidays.json` 尚未經人工核對**（`verified: false`），
    `holidays.test.ts` 裡有一個測試就是在檢查這個旗標，會持續提醒。
    核對完把旗標改 `true` 並刪掉那個測試。
    另外**學校行事曆的停課日**（颱風假、校慶、運動會、考試週停課）行政院公告裡沒有，
    要由使用者補進 `schoolClosures`。
-6. **舊原型 `D:\專案\歐趴EZ\index.html`**（單檔 Vue 3 + Tailwind）要不要搬邏輯過來，
+5. **舊原型 `D:\專案\歐趴EZ\index.html`**（單檔 Vue 3 + Tailwind）要不要搬邏輯過來，
    還是整個重寫。目前假設是重寫。
 
 ---
@@ -133,6 +139,7 @@ Cloud Functions 用 `enforceAppCheck: true`（已設於 `functions/src/index.ts`
 - **手機優先**，桌面版使用同一套 token。
 
 視覺與功能依據見 `docs/00_architecture.html`（功能架構圖、軟體架構圖、UI 介面四個畫面）。
+權限規格見 `docs/01_spec_section3.md`（角色、權限表、規則判斷邏輯、測試要求）。
 
 ---
 
