@@ -151,6 +151,12 @@ export default function SubjectsPage() {
                     <Link className="btn btn-small" to={`/app/settings/subjects/${subject.id}`}>
                       章節
                     </Link>
+                    <Link
+                      className="btn btn-small"
+                      to={`/app/settings/subjects/${subject.id}/items`}
+                    >
+                      內容
+                    </Link>
                     <button
                       type="button"
                       className="btn btn-small"
@@ -172,6 +178,12 @@ export default function SubjectsPage() {
                   <div className="card-actions">
                     <Link className="btn btn-small" to={`/app/settings/subjects/${subject.id}`}>
                       章節
+                    </Link>
+                    <Link
+                      className="btn btn-small"
+                      to={`/app/settings/subjects/${subject.id}/items`}
+                    >
+                      內容
                     </Link>
                   </div>
                 )}

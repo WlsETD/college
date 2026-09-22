@@ -5,9 +5,10 @@
 
 ---
 
-## 目前進度：階段一，步驟 6 / 8 已完成
+## 目前進度：階段一，步驟 7 / 8 已完成
 
 ```
+（本次） 我修的科目、內容項目四型                             ← 步驟 7
 d65174e 學期、科目、章節樹 CRUD 排序、開學設定精靈           ← 步驟 6
 32dca5b 設計 token、Cubic 11 子集化、外殼與底部導覽           ← 步驟 5
 afff92b 實作 Google 登入、建立群組、邀請連結與多群組切換      ← 步驟 4
@@ -16,11 +17,11 @@ ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← �
 0401725 建立 Monorepo 骨架與開發環境                       ← 步驟 1
 ```
 
-驗證狀態：`pnpm test` 545 個測試全過（shared 147 + rules-tests 315 + functions 61 + web 22）、
+驗證狀態：`pnpm test` 587 個測試全過（shared 180 + rules-tests 315 + functions 61 + web 31）、
 `pnpm typecheck` 通過、`pnpm build` 通過。
-另外在 Emulator + 瀏覽器實際走過一遍：登入 → 建立群組 → 建立學期 →
-開學設定精靈（科目 → 貼目錄建 11 個節點 → 邀請連結）→ 科目排序 →
-章節改名／排序／設為進度／連同小節刪除 → 換成檢視者帳號確認整個編輯介面消失。
+另外在 Emulator + 瀏覽器實際走過一遍：四型內容項目（作業快速日期實際跳過了
+2026-09-25 中秋節、批次關鍵字 5 筆含 LaTeX、連結擋掉 javascript:、
+檔案上傳擋掉影片與超過 30 MB 並實際下載回 2048 bytes）、我修的科目勾選與儲存。
 
 `packages/rules-tests` 是唯一需要 Emulator 的套件，`test` script 會先打包 Functions，
 再用 `firebase emulators:exec --project demo-jindu` 起 Auth / Firestore / Storage /
@@ -51,8 +52,8 @@ Functions。**它會占用 8080 / 9199 / 9099 / 5001，和 `pnpm emu` 衝突。*
 | 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | ✅ 完成 |
 | 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | ✅ 完成 |
 | 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | ✅ 完成 |
-| 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | ← 下一步 |
-| 8 | 總覽／作業／筆記／進度四頁、缺重點標示、Emulator 全流程走查 | |
+| 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | ✅ 完成 |
+| 8 | 總覽／作業／筆記／進度四頁、缺重點標示、Emulator 全流程走查 | ← 下一步 |
 
 階段二（**本次不做**）：考試、閃卡、LINE / LIFF、推播通知、AI 產生重點。
 資料結構有預留位置，但不實作。
@@ -123,6 +124,11 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 | 刪章 | 連同底下的小節一起軟刪除（同一個 batch） | 留著孤兒小節在兩層樹上根本顯示不出來 |
 | 刪除確認 | 自製兩段式 `ConfirmButton`，不用 `window.confirm()` | 原生對話框是系統樣式，和像素風差太多；而且會卡住自動化測試 |
 | 章節查詢 | 整棵樹一次查回來（只帶 `deletedAt == null`），在前端組結構 | 一個科目的章節就是一份目錄，量很小，省掉複合索引 |
+| 上傳限制的來源 | `packages/shared/src/limits.ts` 的 `MAX_UPLOAD_BYTES`；`storage.rules` 另外寫死同一個數字 | 規則檔沒辦法 import，改成用 `apps/web/test/safety.test.ts` 比對兩邊 |
+| KaTeX | 只在文字含有 `$` 時才動態 import，獨立成 258 KB 的 chunk | 不讓它進主 bundle；`trust: false` / `strict: 'warn'` 有測試釘住 |
+| 連結型項目的網址 | `normalizeUrl()` 只放行 http(s)，沒寫 scheme 的補 https | `javascript:`、`data:` 會被當成連結塞進 DOM |
+| 檔案的軟刪除 | 只軟刪除 item，Storage 物件留著 | 規則禁止刪除物件；孤兒檔由階段二的排程 Function 清理 |
+| 「我修的科目」為空 | 視為還沒選過，列表顯示全部 | 給空白畫面只會讓人以為壞掉 |
 
 ---
 

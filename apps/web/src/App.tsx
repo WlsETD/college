@@ -15,6 +15,8 @@ import InvitePage from './routes/InvitePage';
 import JoinPage from './routes/JoinPage';
 import LoginPage from './routes/LoginPage';
 import ChaptersPage from './routes/ChaptersPage';
+import EnrollmentPage from './routes/EnrollmentPage';
+import ItemsPage from './routes/ItemsPage';
 import PlaceholderPage from './routes/PlaceholderPage';
 import SetupWizardPage from './routes/SetupWizardPage';
 import SubjectsPage from './routes/SubjectsPage';
@@ -110,6 +112,8 @@ export default function App() {
               <Route path="settings/invite/:gid" element={<InvitePage />} />
               <Route path="settings/subjects" element={<SubjectsPage />} />
               <Route path="settings/subjects/:subId" element={<ChaptersPage />} />
+              <Route path="settings/subjects/:subId/items" element={<ItemsPage />} />
+              <Route path="settings/enrollment" element={<EnrollmentPage />} />
               <Route path="setup" element={<SetupWizardPage />} />
             </Route>
 

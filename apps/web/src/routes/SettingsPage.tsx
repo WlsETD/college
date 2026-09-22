@@ -58,6 +58,9 @@ export default function SettingsPage() {
               <Link className="btn" to="/app/settings/subjects">
                 科目與章節
               </Link>
+              <Link className="btn" to="/app/settings/enrollment">
+                我修的科目
+              </Link>
               {isManager ? (
                 <Link className="btn" to="/app/setup">
                   開學設定精靈

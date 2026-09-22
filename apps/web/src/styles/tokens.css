@@ -687,3 +687,96 @@ a {
   color: var(--ink);
   border-top-color: var(--ink);
 }
+
+/* =============================================================================
+   步驟 7：我修的科目、內容項目四型
+   ========================================================================== */
+
+.field select,
+.field input[type='file'] {
+  min-height: var(--tap-min);
+  border: var(--border-width) solid var(--line);
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: var(--text-base);
+  padding: 0 var(--sp-3);
+}
+
+.field input[type='file'] {
+  padding: var(--sp-2);
+}
+
+/* --- 四型分頁 ------------------------------------------------------------- */
+.type-tabs {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin: var(--sp-4) 0;
+  border-bottom: var(--border-width) solid var(--line);
+}
+
+.type-tab {
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  /* 目前分頁用底線標示，不只靠顏色。 */
+  border-bottom: 4px solid transparent;
+  margin-bottom: calc(var(--border-width) * -1);
+}
+
+.type-tab-on {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+
+/* --- 關鍵字的說明欄 ------------------------------------------------------- */
+.item-body {
+  flex-basis: 100%;
+  font-family: var(--body-font);
+  color: var(--ink);
+  line-height: 1.8;
+}
+
+/* KaTeX 的輸出不要繼承像素字。 */
+.math-text {
+  font-family: var(--body-font);
+}
+
+.math-text .katex-display {
+  margin: var(--sp-2) 0;
+  overflow-x: auto;
+}
+
+/* --- 我修的科目 ----------------------------------------------------------- */
+.enroll-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: var(--tap-min);
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+
+.enroll-row input[type='checkbox'] {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--green);
+}
+
+.enroll-name {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
