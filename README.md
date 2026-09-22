@@ -185,51 +185,75 @@ Firebase CLI 至今無法正確處理 pnpm workspaces 的 symlink 相依
 （firebase-tools issue [#5552](https://github.com/firebase/firebase-tools/issues/5552)、
 [#5911](https://github.com/firebase/firebase-tools/issues/5911)）。
 本專案的作法是用 esbuild 把 `@jindu/shared` 內聯進單一 `functions/lib/index.js`，
-並產生只列外部相依的 `lib/package.json`，部署時就完全沒有 workspace 相依。
-`firebase.json` 的 `predeploy` 已掛上這個打包步驟。
+並產生只列外部相依的 `lib/package.json`，讓**本機開發／Emulator**（`pnpm emu`、
+`pnpm test`）完全沒有 workspace 相依要處理。`firebase.json` 的 `predeploy`
+掛的就是這個打包步驟，`functions.source` 指到 `functions`。
+
+**這個做法只解決了本機的問題，實際部署到雲端還有第二層坑：** `firebase-tools`
+不管是「真的部署」還是「Emulator」，載入函式定義前都會先在本機找
+`<source>/node_modules/firebase-functions`，而且不會像 Node.js 正常的 `require`
+往上層資料夾找，所以 `functions.source` 不能指到 `functions/lib/`（那裡沒有自己的
+`node_modules`，兩條路都會死在 `Failed to find location of Firebase Functions
+SDK`），也不能維持指到 `functions/` 整個資料夾（Cloud Build 遠端 `npm install`
+讀到的是資料夾根目錄的 `functions/package.json`，裡面 `"@jindu/shared":
+"workspace:*"` 這個 pnpm 專屬協定 npm 看不懂，會直接炸掉 `EUNSUPPORTEDPROTOCOL`）。
+
+**部署走的是另一份完全獨立的設定**：`firebase.deploy.json`，`functions.source`
+指到 `functions/.deploy/`（已 gitignore）。它的 `predeploy` 跑
+`pnpm --filter @jindu/functions run build:deploy`（`functions/prepare-deploy.mjs`），
+在 esbuild 打包完之後，對這個獨立目錄做一次**真正的** `npm install`（不是 pnpm
+workspace symlink），讓 `firebase-admin`／`firebase-functions` 貨真價實裝在
+`.deploy/node_modules` 底下。本機開發、跑測試、開 Emulator 完全不會走到這裡，
+不需要網路也不會變慢；只有要部署時才需要網路連線去下載套件。
 
 ## 正式環境部署
 
 用的是既有的 Firebase 專案 `college-f67fa`（Console 顯示名稱「college」），
 不是新建的。`.firebaserc` 已指到它。以下是目前狀態：
 
-**已經用 CLI 做好的：**
+**已經用 CLI 做完並驗證過的：**
 
 - [x] `firebase use` 連結專案（`.firebaserc`）
 - [x] Firestore 原生模式資料庫，地區 `asia-east1`（台灣）——跟 `functions/src/options.ts`
       固定的 `REGION` 一致，這個地區建了就不能改
+- [x] Storage 預設 bucket，一樣在 `asia-east1`（第一次在 Console 點「開始使用」時
+      預設會給 `us-east1`，這個地區也是建了就不能改，務必在精靈的地區選單裡選對）
+- [x] Auth 已啟用，Google 登入 provider 已開
+- [x] Blaze 方案已升級
 - [x] 註冊 Web App，拿到 SDK 設定值，寫進 `apps/web/.env.production.local`
       （已 gitignore，不在版控裡）
-- [x] 部署 `firestore.rules` 與 `firestore.indexes.json`
+- [x] 部署 `firestore.rules`、`firestore.indexes.json`、`storage.rules`
+- [x] 部署全部 8 個 Cloud Functions（`firebase deploy --only functions
+      --config firebase.deploy.json`），Artifact Registry 的清理政策也設了
+      （`asia-east1`、7 天）
 
 **還差幾項只能在 Console 手動點的（CLI 或 API 都到不了）：**
 
-1. **升級 Blaze 方案。** [帳單設定](https://console.firebase.google.com/project/college-f67fa/usage/details) →
-   目前是 Spark，Cloud Functions 部署會直接失敗，Storage 的觸發器也要 Blaze。
-2. **開通 Firebase Storage。** [Storage 頁面](https://console.firebase.google.com/project/college-f67fa/storage) →
-   按一次「開始使用」建立預設 bucket，`firebase deploy --only storage` 才不會報
-   `Firebase Storage has not been set up`。開通後記得也部署一次 `storage.rules`。
-3. **啟用 Auth 並開 Google 登入。** [Auth 頁面](https://console.firebase.google.com/project/college-f67fa/authentication/providers) →
-   這個專案的 Auth 目前完全沒初始化過，開通後在「登入方式」加 Google provider。
-4. **App Check：建立 reCAPTCHA Enterprise 網站金鑰。** [App Check 頁面](https://console.firebase.google.com/project/college-f67fa/appcheck) →
-   註冊網站金鑰，網域填正式環境的 Hosting 網址（等 Blaze 開通、Hosting 部署後才會有）。
+1. **App Check：建立 reCAPTCHA Enterprise 網站金鑰。** [App Check 頁面](https://console.firebase.google.com/project/college-f67fa/appcheck) →
+   註冊網站金鑰，網域填正式環境的 Hosting 網址（部署 Hosting 之後才會有，
+   預設應該是 `college-f67fa.web.app` 或 `college-f67fa.firebaseapp.com`）。
    金鑰填進 `apps/web/.env.production.local` 的 `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`。
-5. **App Check enforcement。** 同一個頁面對 Firestore 與 Storage 分別按「強制」——
+2. **App Check enforcement。** 同一個頁面對 Firestore 與 Storage 分別按「強制」——
    規則檔本身管不到這個（見上面「開發時必須記得的三件事」第三點）。
-6. Blaze 開通、Storage 開通之後，補跑：
+3. Hosting 部署（App Check 金鑰填好之前可以先部署，讓網址存在）：
 
    ```bash
-   pnpm --filter @jindu/functions build
-   firebase deploy --only functions,storage --project college-f67fa
-   firebase deploy --only hosting --project college-f67fa   # 先跑 pnpm --filter @jindu/web build
+   pnpm --filter @jindu/web build   # 用 apps/web/.env.production.local
+   firebase deploy --only hosting --project college-f67fa
+   ```
+
+4. 之後每次要重新部署 Functions：
+
+   ```bash
+   firebase deploy --only functions --project college-f67fa --config firebase.deploy.json
    ```
 
 ## 待辦
 
 - [ ] `packages/shared/data/holidays.json` **尚未經人工核對**，且不含學校行事曆的停課日
 - [x] 安全規則與權限表測試（步驟 3）
-- [x] Firebase 專案已連結（`college-f67fa`）、Firestore 規則與索引已部署
-- [ ] 還差幾項只能在 Console 手動點的設定，見上面「正式環境部署」
+- [x] Firebase 專案已連結（`college-f67fa`），Firestore／Storage／Functions 都已部署
+- [ ] App Check reCAPTCHA 金鑰與 enforcement、Hosting 部署，見上面「正式環境部署」
 - [ ] 前端 bundle 目前 734 kB（Firebase SDK 佔大宗），上線前要做 code splitting
 - [ ] `fonts.css` 40 kB（gzip 15 kB），大部分是 21 片的 unicode-range 清單，可再壓
 - [ ] 綠色 `#008751` 對米色底只有 4.14:1，目前規定只放白底；若要放米底需另定一個深綠

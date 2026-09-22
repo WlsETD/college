@@ -6,6 +6,10 @@ coverage/
 # apps/web/src/lib/ 與 functions/src/lib/ 的原始碼一起排除掉。
 /functions/lib/
 
+# 部署專用的獨立目錄（含真的 npm install 出來的 node_modules），
+# 只有 pnpm --filter @jindu/functions run build:deploy 會產生，見該指令的說明。
+/functions/.deploy/
+
 # 字型子集化的來源檔快取，由 scripts/build-fonts.mjs 自動下載
 apps/web/.font-cache/
 .DS_Store

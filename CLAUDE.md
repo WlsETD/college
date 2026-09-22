@@ -105,6 +105,7 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 | --- | --- | --- |
 | 時區實作 | `tz.ts` 自製，用 `Intl.DateTimeFormat`，零相依 | 只需單一固定時區，不值得為此把 tz database 塞進兩個 bundle |
 | Functions 打包 | esbuild 打成單一 `lib/index.js`，自動產生只列外部相依的 `lib/package.json` | Firebase CLI 無法處理 pnpm workspace 的 symlink 相依（firebase-tools [#5552](https://github.com/firebase/firebase-tools/issues/5552)、[#5911](https://github.com/firebase/firebase-tools/issues/5911)） |
+| Functions 部署 | 另一份獨立的 `firebase.deploy.json`，`source` 指到 `functions/.deploy/`（gitignore），`predeploy` 跑 `pnpm --filter @jindu/functions run build:deploy` 對這個目錄做真正的 `npm install` | `lib/` 本身沒有 `node_modules`，`firebase-tools` 找 SDK 位置不會往上層資料夾找，指到 `lib/` 部署和 Emulator 都會死在 `Failed to find location of Firebase Functions SDK`；維持指到 `functions/` 整個資料夾，Cloud Build 讀到的是根目錄那份還有 `workspace:*` 的 `package.json`，一樣會死。本機開發／Emulator 用的 `firebase.json` 完全沒動，不受影響 |
 | 章節樹層數 | 固定兩層（章／小節）。三層以上的編號壓成小節編號如 `1-1-2` | 目錄解析的自然輸出就是兩層 |
 | 缺重點定義 | 該章節底下沒有任何 `type === 'keyword'` 的未刪除項目 | |
 | 檢視者可見範圍 | Rules 讓檢視者讀得到全群組資料，只在前端依「我修的科目」過濾 | 逐科目檢查 `enrolledSubjectIds` 會讓讀取成本與規則複雜度大幅上升 |

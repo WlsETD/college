@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
+    "build:deploy": "node esbuild.config.mjs && node prepare-deploy.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "serve": "pnpm build && firebase emulators:start --only functions"
