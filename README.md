@@ -226,27 +226,33 @@ workspace symlink），讓 `firebase-admin`／`firebase-functions` 貨真價實�
 - [x] 部署全部 8 個 Cloud Functions（`firebase deploy --only functions
       --config firebase.deploy.json`），Artifact Registry 的清理政策也設了
       （`asia-east1`、7 天）
+- [x] 部署 Hosting，網址是 **https://college-f67fa.web.app**
+      （App Check 金鑰還沒設，見下面——目前這個網址能開，Google 登入也能用，
+      但寫入 Firestore／Storage 的動作會被 Functions 的 `enforceAppCheck: true` 擋掉）
 
 **還差幾項只能在 Console 手動點的（CLI 或 API 都到不了）：**
 
 1. **App Check：建立 reCAPTCHA Enterprise 網站金鑰。** [App Check 頁面](https://console.firebase.google.com/project/college-f67fa/appcheck) →
-   註冊網站金鑰，網域填正式環境的 Hosting 網址（部署 Hosting 之後才會有，
-   預設應該是 `college-f67fa.web.app` 或 `college-f67fa.firebaseapp.com`）。
-   金鑰填進 `apps/web/.env.production.local` 的 `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`。
+   註冊網站金鑰，網域填 `college-f67fa.web.app`（Hosting 已經部署好，就是這個網址）。
+   金鑰填進 `apps/web/.env.production.local` 的 `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`，
+   填完要重新 `pnpm --filter @jindu/web build` 再 `firebase deploy --only hosting` 一次
+   才會生效（金鑰是打包進前端 bundle 的環境變數，不是執行期讀取）。
 2. **App Check enforcement。** 同一個頁面對 Firestore 與 Storage 分別按「強制」——
    規則檔本身管不到這個（見上面「開發時必須記得的三件事」第三點）。
-3. Hosting 部署（App Check 金鑰填好之前可以先部署，讓網址存在）：
 
-   ```bash
-   pnpm --filter @jindu/web build   # 用 apps/web/.env.production.local
-   firebase deploy --only hosting --project college-f67fa
-   ```
+**之後要重新部署，各自的指令：**
 
-4. 之後每次要重新部署 Functions：
+```bash
+# Functions（走獨立的部署設定，見上面說明）
+firebase deploy --only functions --project college-f67fa --config firebase.deploy.json
 
-   ```bash
-   firebase deploy --only functions --project college-f67fa --config firebase.deploy.json
-   ```
+# Hosting（要先重新 build，才會抓到 apps/web/.env.production.local 的最新值）
+pnpm --filter @jindu/web build
+firebase deploy --only hosting --project college-f67fa
+
+# Firestore／Storage 規則或索引改過之後
+firebase deploy --only firestore:rules,firestore:indexes,storage --project college-f67fa
+```
 
 ## 待辦
 
