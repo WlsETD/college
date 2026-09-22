@@ -5,19 +5,20 @@
 
 ---
 
-## 目前進度：階段一，步驟 4 / 8 已完成
+## 目前進度：階段一，步驟 5 / 8 已完成
 
 ```
+（本次） 設計 token、Cubic 11 子集化、外殼與底部導覽           ← 步驟 5
 afff92b 實作 Google 登入、建立群組、邀請連結與多群組切換      ← 步驟 4
 ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← 步驟 3
 882349a 實作 packages/shared 的共用純函式與單元測試        ← 步驟 2
 0401725 建立 Monorepo 骨架與開發環境                       ← 步驟 1
 ```
 
-驗證狀態：`pnpm test` 491 個測試全過（shared 115 + functions 61 + rules-tests 315）、
+驗證狀態：`pnpm test` 513 個測試全過（shared 115 + rules-tests 315 + functions 61 + web 22）、
 `pnpm typecheck` 通過、`pnpm build` 通過。
 另外在 Emulator + 瀏覽器實際走過一遍：登入 → 建立群組 → 產生邀請連結 →
-換帳號開連結加入（角色為檢視者）→ 建立第二個群組 → 切換。
+換帳號開連結加入（角色為檢視者）→ 建立第二個群組 → 切換 → 五個分頁的外殼與導覽。
 
 `packages/rules-tests` 是唯一需要 Emulator 的套件，`test` script 會先打包 Functions，
 再用 `firebase emulators:exec --project demo-jindu` 起 Auth / Firestore / Storage /
@@ -46,8 +47,8 @@ Functions。**它會占用 8080 / 9199 / 9099 / 5001，和 `pnpm emu` 衝突。*
 | 2 | `packages/shared` 純函式 + 單元測試 | ✅ 完成 |
 | 3 | Firestore 資料模型 + `firestore.rules` + `storage.rules` + 權限表逐格測試 | ✅ 完成 |
 | 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | ✅ 完成 |
-| 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | ← 下一步 |
-| 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | |
+| 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | ✅ 完成 |
+| 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | ← 下一步 |
 | 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | |
 | 8 | 總覽／作業／筆記／進度四頁、缺重點標示、Emulator 全流程走查 | |
 
@@ -110,6 +111,11 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 | 邀請連結 | 可以有多張；`rotateInvite` 會把該群組所有還有效的邀請標成 `revokedAt` 再發一張新的 | 型別裡 `revokedAt` 與 `expiresAt` 都有，這樣兩個欄位才各司其職 |
 | 邀請的明碼 token | 只在 `createInvite` / `rotateInvite` 的回傳值出現一次 | Firestore 只存 hash，關掉就拿不回來，只能重新產生 |
 | 前端路由 | `react-router-dom` v6 | 架構圖已經規定了 `/app/*`、`/join/:token`、`/liff/*` 的路徑 |
+| 像素字級 | 12 / 24 / 36px | Cubic 11 的 em 裡剛好 12 個點，只有 12 的整數倍才對齊像素格線（量測見上） |
+| Cubic 11 來源 | `scripts/build-fonts.mjs` 從官方 repo 的固定 tag 下載，比對 SHA-256，快取在 gitignore 的 `.font-cache/` | 2.7 MB 的 ttf 不進版控，但版本與內容可驗證 |
+| 字型分片 | `core`（非中文）＋`ui`（掃描原始碼取得的介面用字）＋19 片依碼位切的 `cjk-NN` | 一般畫面只下載 core + ui 共 47.8 KB，而不是整份 400 KB |
+| 綠色的使用範圍 | `--green` 只放白底 | 對米色底 `#FFF1E8` 只有 4.14:1，未達 AA |
+| 導覽圖示 | 16×16 點陣，顯示 32px（2×） | 16px 在手機上太小看不清，非整數倍會糊 |
 
 ---
 
@@ -117,23 +123,19 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 
 （步驟 3 的權限表問題已解決：使用者於 2026-09-22 提供 `docs/01_spec_section3.md`。）
 
-**進入步驟 5 之前必須先問使用者：**
-
-1. **規格書第 7 節的配色。** 目前只確定放文字的綠色 `#008751`、紅色 `#C4003B`。
-   科目 12 色是提案版本，待確認。
-2. **要不要做深色模式。** `#008751` 在深色底無法達 WCAG AA，
-   若要支援需另定一組深色專用的綠／紅。
-3. **Cubic 11 字型檔。** 使用者要提供，交由你做 woff2 子集化與 unicode-range 分片。
-   授權為開源免費可商用。
+（步驟 5 的三個問題已於 2026-09-22 解決：科目 12 色採用架構圖提案、
+階段一不做深色模式、Cubic 11 由 Claude 自官方 repo 取得並子集化。）
 
 **隨時可補：**
 
-4. **`packages/shared/data/holidays.json` 尚未經人工核對**（`verified: false`），
+1. **綠色 `#008751` 只能放白底。** 對頁面底色 `#FFF1E8` 只有 4.14:1，未達 AA。
+   目前的規則是綠色文字一律在白底面板上。若要在米色底用綠字，需要另定一個較深的綠。
+2. **`packages/shared/data/holidays.json` 尚未經人工核對**（`verified: false`），
    `holidays.test.ts` 裡有一個測試就是在檢查這個旗標，會持續提醒。
    核對完把旗標改 `true` 並刪掉那個測試。
    另外**學校行事曆的停課日**（颱風假、校慶、運動會、考試週停課）行政院公告裡沒有，
    要由使用者補進 `schoolClosures`。
-5. **舊原型 `D:\專案\歐趴EZ\index.html`**（單檔 Vue 3 + Tailwind）要不要搬邏輯過來，
+3. **舊原型 `D:\專案\歐趴EZ\index.html`**（單檔 Vue 3 + Tailwind）要不要搬邏輯過來，
    還是整個重寫。目前假設是重寫。
 
 ---
@@ -142,15 +144,40 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 
 - **混合字型**：標題、按鈕、標籤、數字用俐方體 Cubic 11（需自行下載並子集化成 woff2，
   用 `unicode-range` 分片）；使用者輸入的長內容與公式用 Noto Sans TC 與 KaTeX。
-- **像素字只用 11 / 22 / 33px。** Cubic 11 是 11×11 點陣，只有整數倍才銳利。
+- **像素字只用 12 / 24 / 36px。**（原本寫 11 / 22 / 33，實際量過字型後修正——見下方說明。）
   另需 `-webkit-font-smoothing: none`，否則 Retina 上抗鋸齒會把點陣糊掉。
 - **配色**依規格書第 7 節；放文字的綠色 `#008751`（對白底 4.58:1）、
   紅色 `#C4003B`（6.16:1），所有文字對比需達 WCAG AA。
 - **狀態不能只靠顏色區分**，一律搭配符號或圖樣
   （例：缺重點 = 紅框 + 斜線底紋 + ▲ 三重編碼）。
 - **所有可點元件的觸控範圍至少 44×44px**；按下時硬陰影消失、位移 3px；動畫使用 `steps()`。
-- **底部導覽圖示以 16×16 點陣繪製**；有意義的圖示加 `aria-label`，裝飾性的加 `aria-hidden`。
+- **底部導覽圖示以 16×16 點陣繪製**，顯示時放大整數倍（目前 2×＝32px）才不會糊；
+  有意義的圖示加 `aria-label`，裝飾性的加 `aria-hidden`。
 - **手機優先**，桌面版使用同一套 token。
+
+### 為什麼是 12 / 24 / 36 而不是 11 / 22 / 33
+
+量過 Cubic 11 v1.500 的實際輪廓：**一個點是 100 font units，`unitsPerEm` 是 1200**，
+所以一個 em 裡剛好 12 個點（全形字的 advance 是 1300＝13 個點）。
+`font-size` 必須是 12 的整數倍，一個點才會對齊一個 CSS 像素。
+
+瀏覽器實測每個全形字的寬度：
+
+| font-size | 每字寬 | 是否對齊 |
+| --- | --- | --- |
+| 11px | 11.9103px | ✗ |
+| 12px | 13px | ✓ |
+| 22px | 23.8266px | ✗ |
+| 24px | 26px | ✓ |
+| 33px | 35.75px | ✗ |
+| 36px | 39px | ✓ |
+
+「11×11」講的是字身的點陣大小，不是 em。原本的 11 / 22 / 33 會讓一個點變成
+11/12 個 CSS 像素，點陣邊緣糊掉，正好違背這條規則想達到的目的。
+`apps/web/test/design-tokens.test.ts` 有測試守住「必須是 12 的整數倍」。
+若之後決定改回 11 / 22 / 33，改 `tokens.css` 三個變數與那個測試即可。
+
+---
 
 視覺與功能依據見 `docs/00_architecture.html`（功能架構圖、軟體架構圖、UI 介面四個畫面）。
 權限規格見 `docs/01_spec_section3.md`（角色、權限表、規則判斷邏輯、測試要求）。

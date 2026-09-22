@@ -1,18 +1,21 @@
 /**
- * 路由骨架。
+ * 路由與外殼。
  *
- * 正式的外殼與底部導覽在步驟 5 才做，這裡只把步驟 4 的四個畫面接起來：
- * 登入、我的群組（含建立與切換）、邀請連結管理、邀請落地頁。
+ * /app 底下的五個分頁共用 AppShell（頁首 + 底部導覽）；登入頁與邀請落地頁
+ * 沒有導覽，走另一套簡單版面。四個內容分頁目前是佔位畫面，步驟 6～8 才填。
  */
 
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
+import AppShell from './components/AppShell';
 import { AuthProvider, useAuth } from './lib/auth';
-import GroupsPage from './routes/GroupsPage';
+import { GroupProvider } from './lib/groupContext';
 import InvitePage from './routes/InvitePage';
 import JoinPage from './routes/JoinPage';
 import LoginPage from './routes/LoginPage';
+import PlaceholderPage from './routes/PlaceholderPage';
+import SettingsPage from './routes/SettingsPage';
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -30,30 +33,90 @@ export default function App() {
       future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
     >
       <AuthProvider>
-        <main className="shell">
+        <GroupProvider>
           <Routes>
             <Route path="/" element={<Navigate to="/app" replace />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/join/:token" element={<JoinPage />} />
+
+            <Route
+              path="/login"
+              element={
+                <main className="shell">
+                  <LoginPage />
+                </main>
+              }
+            />
+            <Route
+              path="/join/:token"
+              element={
+                <main className="shell">
+                  <JoinPage />
+                </main>
+              }
+            />
+
             <Route
               path="/app"
               element={
                 <RequireAuth>
-                  <GroupsPage />
+                  <AppShell />
                 </RequireAuth>
               }
-            />
+            >
+              <Route index element={<Navigate to="/app/overview" replace />} />
+              <Route
+                path="overview"
+                element={
+                  <PlaceholderPage
+                    title="總覽"
+                    summary="7 天內到期的作業會列在這裡，依到期日排序。"
+                    step="步驟 8"
+                  />
+                }
+              />
+              <Route
+                path="homework"
+                element={
+                  <PlaceholderPage
+                    title="作業"
+                    summary="依科目與到期日列出所有作業。"
+                    step="步驟 8"
+                  />
+                }
+              />
+              <Route
+                path="notes"
+                element={
+                  <PlaceholderPage
+                    title="筆記"
+                    summary="關鍵字、檔案與連結，依章節整理。"
+                    step="步驟 8"
+                  />
+                }
+              />
+              <Route
+                path="progress"
+                element={
+                  <PlaceholderPage
+                    title="進度"
+                    summary="章節樹、目前進度，以及缺重點的章節標示。"
+                    step="步驟 8"
+                  />
+                }
+              />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/invite/:gid" element={<InvitePage />} />
+            </Route>
+
             <Route
-              path="/app/:gid/invite"
+              path="*"
               element={
-                <RequireAuth>
-                  <InvitePage />
-                </RequireAuth>
+                <main className="shell">
+                  <p className="hint">找不到這個頁面。</p>
+                </main>
               }
             />
-            <Route path="*" element={<p className="hint">找不到這個頁面。</p>} />
           </Routes>
-        </main>
+        </GroupProvider>
       </AuthProvider>
     </BrowserRouter>
   );

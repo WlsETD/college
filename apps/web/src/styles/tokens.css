@@ -1,137 +1,316 @@
 /* =============================================================================
-   設計 token —— 像素復古風。
-   完整的 token 與字型子集化於階段一步驟 5 實作，這裡先放最小可用的一組，
-   讓骨架畫面有正確的底色與字級規則。
+   進度本 —— 設計 token（像素復古風）
 
-   規則備忘：
-   - 像素字級只用 11 / 22 / 33px，因為 Cubic 11 是 11x11 點陣，
-     只有整數倍才不會糊。使用者輸入的長內容與公式改用 Noto Sans TC + KaTeX。
-   - 所有可點元件的觸控範圍至少 44x44px。
-   - 按下時硬陰影消失、位移 3px，動畫用 steps()。
-   - 狀態不能只靠顏色區分，一律搭配符號或圖樣。
+   四條硬規則，改東西前先看一次：
+
+   1. 像素字級只用 --px-sm / --px-md / --px-lg，也就是 12 / 24 / 36px。
+      Cubic 11 的一個點是 100 font units，em 是 1200 units，所以一個 em 剛好
+      12 個點。font-size 必須是 12 的整數倍，一個點才會對齊一個 CSS 像素；
+      11px 會變成 11/12 個像素，點陣直接糊掉。另外要 -webkit-font-smoothing: none，
+      否則 Retina 上的抗鋸齒會把點陣邊緣抹掉。
+      使用者輸入的長內容與公式用 --body-font（Noto Sans TC）+ KaTeX，不受此限。
+
+   2. 綠色 --green 只能放在白底（--panel）上。
+      #008751 對白底 4.58:1 過 AA，但對頁面底色 #FFF1E8 只有 4.14:1，不合格。
+      紅色 --red 對兩種底都過（6.16:1 / 5.57:1）。
+
+   3. 狀態不能只靠顏色。一律顏色 + 符號／圖樣雙重（或三重）編碼，
+      例如「缺重點」＝紅框 + 斜線底紋 + ▲，見 .missing。
+
+   4. 所有可點元件的觸控範圍至少 --tap-min（44px）。按下時硬陰影消失、
+      位移 --shadow-offset（3px），轉場用 steps()。
+
+   深色模式：階段一不做。token 都掛在 :root 上，日後加 [data-theme='dark']
+   覆寫同一組變數即可，不必重寫元件。#008751 在深色底達不到 AA，
+   屆時要另外定一組深色專用的綠／紅。
    ========================================================================== */
 
 :root {
-  --ground: #fff1e8;
-  --panel: #ffffff;
-  --ink: #1d2b53;
-  --muted: #5c668c;
+  /* --- 底色與線條 ------------------------------------------------------- */
+  --ground: #fff1e8; /* 頁面底色 */
+  --panel: #ffffff; /* 卡片、面板、底部導覽 */
+  --ink: #1d2b53; /* 主文字，對白底 13.79:1 */
+  --muted: #5c668c; /* 次要文字，對白底 5.62:1 */
   --line: #1d2b53;
-
-  /* 放文字的綠色與紅色，對白底分別為 4.58:1 與 6.16:1，皆達 WCAG AA。 */
-  --green: #008751;
-  --red: #c4003b;
-
   --shadow: #1d2b53;
 
+  /* --- 語意色（見上面規則 2） ------------------------------------------- */
+  --green: #008751; /* 完成、進度正常。只放在 --panel 上 */
+  --red: #c4003b; /* 缺重點、逾期 */
+  --on-accent: #ffffff;
+
+  /* --- 科目 12 色 -------------------------------------------------------
+     色塊只是輔助，一律搭配 3 字簡稱文字。12 色全部可承載白色文字，
+     最低的是 03 的 4.58:1，仍達 AA。 */
+  --subject-0: #1d2b53;
+  --subject-1: #7e2553;
+  --subject-2: #008751;
+  --subject-3: #ab5236;
+  --subject-4: #5f574f;
+  --subject-5: #c4003b;
+  --subject-6: #b54a00;
+  --subject-7: #7b4bd8;
+  --subject-8: #2b6fcf;
+  --subject-9: #006d75;
+  --subject-10: #a3005e;
+  --subject-11: #3f5b00;
+
+  /* --- 字型 ------------------------------------------------------------- */
   --px-font: 'Cubic 11', 'Noto Sans TC', system-ui, sans-serif;
   --body-font: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
 
-  --px-sm: 11px;
-  --px-md: 22px;
-  --px-lg: 33px;
+  /* --- 像素字級（只有這三種，都是 12 的整數倍） ------------------------- */
+  --px-sm: 12px; /* 按鈕、標籤、導覽 */
+  --px-md: 24px; /* 區塊標題、數字 */
+  --px-lg: 36px; /* 頁面標題 */
+  --px-sm-line: 16px;
+  --px-md-line: 32px;
+  --px-lg-line: 44px;
 
+  /* --- 內文字級（非像素字，可自由縮放） --------------------------------- */
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+
+  /* --- 間距（4px 網格） ------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* --- 邊框與硬陰影 ----------------------------------------------------- */
+  --border-width: 2px;
+  --shadow-offset: 3px;
+  --hard-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow);
+
+  /* --- 觸控與動態 ------------------------------------------------------- */
   --tap-min: 44px;
-  --press-offset: 3px;
+  --press: 80ms steps(2, end);
+
+  /* --- 版面 ------------------------------------------------------------- */
+  --content-max: 480px;
+  --gutter: 16px;
+  --nav-height: 64px;
+  --header-height: 52px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --press: 0ms steps(1, end);
+  }
+}
+
+/* =============================================================================
+   基礎
+   ========================================================================== */
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  min-height: 100%;
+}
+
+body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--body-font);
-  font-size: 15px;
+  font-size: var(--text-base);
   line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
 }
 
-.shell {
-  max-width: 480px;
-  margin: 0 auto;
-  padding-inline: 16px;
-  padding-block: 32px;
-}
-
-.eyebrow {
+/* 像素字一律走這個 mixin。抗鋸齒會把 11x11 的點陣糊掉，必須關掉。 */
+.pixel,
+.eyebrow,
+.tag,
+.btn,
+h1,
+h2,
+h3,
+.nav-label,
+.field span {
   font-family: var(--px-font);
-  font-size: var(--px-sm);
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  margin: 0;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  letter-spacing: 0;
 }
 
 h1 {
-  font-family: var(--px-font);
   font-size: var(--px-lg);
-  margin: 8px 0 24px;
+  line-height: var(--px-lg-line);
+  margin: var(--sp-2) 0 var(--sp-5);
 }
-
-.probe {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px 16px;
-  margin: 0;
-  border: 2px solid var(--line);
-  background: var(--panel);
-  box-shadow: var(--press-offset) var(--press-offset) 0 var(--shadow);
-  padding: 16px;
-}
-
-.probe dt {
-  font-family: var(--px-font);
-  font-size: var(--px-sm);
-  color: var(--muted);
-}
-
-.probe dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-/* -----------------------------------------------------------------------------
-   步驟 4 的臨時元件樣式。
-   正式的元件與底部導覽在步驟 5 重做，這裡只求可用且符合三條硬規則：
-   觸控範圍 ≥ 44x44、按下時硬陰影消失並位移 3px、狀態不只靠顏色。
-   -------------------------------------------------------------------------- */
 
 h2 {
-  font-family: var(--px-font);
   font-size: var(--px-md);
-  margin: 0 0 8px;
+  line-height: var(--px-md-line);
+  margin: 0 0 var(--sp-2);
+}
+
+h3 {
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  margin: 0 0 var(--sp-2);
 }
 
 a {
+  color: var(--green); /* 連結都在白底面板或導覽上 */
+}
+
+:focus-visible {
+  outline: var(--border-width) solid var(--red);
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   版面：外殼、頁首、底部導覽
+   ========================================================================== */
+
+.shell {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+  padding-block: var(--sp-6);
+}
+
+/* 有底部導覽時的內容區，要留出導覽與手機安全區的高度。 */
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+  padding-block: var(--sp-4);
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--sp-5));
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-bottom: var(--border-width) solid var(--line);
+}
+
+.app-header-inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  min-height: var(--header-height);
+  padding-inline: var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.app-title {
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  color: var(--muted);
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  background: var(--panel);
+  border-top: var(--border-width) solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-nav-inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.nav-item {
+  min-height: var(--nav-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-decoration: none;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--press);
+}
+
+.nav-item:active {
+  transform: translateY(var(--shadow-offset));
+}
+
+/* 目前分頁：顏色 + 頂端的實心指示條，不只靠顏色。 */
+.nav-item[aria-current='page'] {
   color: var(--green);
+  box-shadow: inset 0 4px 0 0 var(--green);
+}
+
+.nav-label {
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+}
+
+/* =============================================================================
+   元件
+   ========================================================================== */
+
+.eyebrow {
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  color: var(--muted);
+  margin: 0;
 }
 
 .hint {
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .error {
   color: var(--red);
-  border: 2px solid var(--red);
+  border: var(--border-width) solid var(--red);
   background: var(--panel);
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--text-sm);
 }
 
 .btn {
   font-family: var(--px-font);
+  -webkit-font-smoothing: none;
   font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
   min-height: var(--tap-min);
   min-width: var(--tap-min);
-  padding: 0 16px;
-  border: 2px solid var(--line);
+  padding: 0 var(--sp-4);
+  border: var(--border-width) solid var(--line);
   background: var(--panel);
   color: var(--ink);
   cursor: pointer;
-  box-shadow: var(--press-offset) var(--press-offset) 0 var(--shadow);
-  transition: transform 80ms steps(2), box-shadow 80ms steps(2);
+  box-shadow: var(--hard-shadow);
+  transition: transform var(--press), box-shadow var(--press);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -139,7 +318,7 @@ a {
 }
 
 .btn:active:not(:disabled) {
-  transform: translate(var(--press-offset), var(--press-offset));
+  transform: translate(var(--shadow-offset), var(--shadow-offset));
   box-shadow: none;
 }
 
@@ -147,11 +326,11 @@ a {
   color: var(--muted);
   cursor: not-allowed;
   box-shadow: none;
-  transform: translate(var(--press-offset), var(--press-offset));
+  transform: translate(var(--shadow-offset), var(--shadow-offset));
 }
 
 .btn-small {
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
 }
 
 .btn-on {
@@ -164,42 +343,43 @@ a {
   box-shadow: none;
   color: var(--green);
   text-decoration: underline;
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
+  min-height: var(--tap-min);
 }
 
 .panel {
-  border: 2px solid var(--line);
+  border: var(--border-width) solid var(--line);
   background: var(--panel);
-  box-shadow: var(--press-offset) var(--press-offset) 0 var(--shadow);
-  padding: 16px;
-  margin: 24px 0;
+  box-shadow: var(--hard-shadow);
+  padding: var(--sp-4);
+  margin: var(--sp-5) 0;
 }
 
 .panel-highlight {
   border-color: var(--green);
-  box-shadow: var(--press-offset) var(--press-offset) 0 var(--green);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--green);
 }
 
 .card-list {
   list-style: none;
-  margin: 16px 0;
+  margin: var(--sp-4) 0;
   padding: 0;
   display: grid;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .card {
-  border: 2px solid var(--line);
+  border: var(--border-width) solid var(--line);
   background: var(--panel);
-  padding: 12px;
+  padding: var(--sp-3);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: center;
   justify-content: space-between;
 }
 
-/* 目前選到的群組：左側粗邊 + ● 符號，不只靠顏色。 */
+/* 目前選到的項目：左側粗邊 + ● 標籤，不只靠顏色。 */
 .card-active {
   border-left-width: 8px;
   border-left-color: var(--green);
@@ -208,21 +388,21 @@ a {
 .card-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 
 .card-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .tag {
-  font-family: var(--px-font);
   font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
   color: var(--muted);
-  border: 2px solid var(--line);
-  padding: 2px 6px;
+  border: var(--border-width) solid var(--line);
+  padding: 2px var(--sp-1);
 }
 
 .tag-active {
@@ -230,40 +410,107 @@ a {
   border-color: var(--green);
 }
 
+/* 科目色塊。色塊只是輔助，裡面一定要放 3 字簡稱。 */
+.subject-chip {
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  color: var(--on-accent);
+  background: var(--subject-color, var(--subject-0));
+  border: var(--border-width) solid var(--line);
+  padding: var(--sp-1) var(--sp-2);
+  display: inline-block;
+}
+
+/* 缺重點／逾期：紅框 + 斜線底紋 + ▲，三重編碼。 */
+.missing {
+  border: var(--border-width) solid var(--red);
+  color: var(--red);
+  background-color: var(--panel);
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--red) 12%, transparent) 0 4px,
+    transparent 4px 8px
+  );
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.missing::before {
+  content: '▲ ';
+}
+
 .field {
   display: grid;
-  gap: 4px;
-  margin: 12px 0;
+  gap: var(--sp-1);
+  margin: var(--sp-3) 0;
 }
 
 .field span {
-  font-family: var(--px-font);
   font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
   color: var(--muted);
 }
 
-.field input {
+.field input,
+.field textarea {
   min-height: var(--tap-min);
-  border: 2px solid var(--line);
+  border: var(--border-width) solid var(--line);
   background: var(--ground);
   color: var(--ink);
   font-family: var(--body-font);
-  font-size: 15px;
-  padding: 0 12px;
+  font-size: var(--text-base);
+  padding: 0 var(--sp-3);
 }
 
 .choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
 }
 
 .token {
   display: block;
   word-break: break-all;
-  border: 2px dashed var(--line);
+  border: var(--border-width) dashed var(--line);
   background: var(--ground);
-  padding: 8px;
-  font-size: 13px;
+  padding: var(--sp-2);
+  font-size: var(--text-sm);
+}
+
+.probe {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  border: var(--border-width) solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--hard-shadow);
+  padding: var(--sp-4);
+}
+
+.probe dt {
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-sm);
+  color: var(--muted);
+}
+
+.probe dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 只給螢幕報讀軟體看的文字。 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

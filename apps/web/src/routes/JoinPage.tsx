@@ -70,7 +70,7 @@ export default function JoinPage() {
         photoURL: user.photoURL ?? null,
       });
       writeActiveGid(res.data.gid);
-      navigate('/app', { replace: true });
+      navigate('/app/overview', { replace: true });
     } catch (err) {
       setStatus({ kind: 'error', message: describeCallableError(err) });
     }

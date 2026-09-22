@@ -106,7 +106,7 @@ export default function InvitePage() {
   return (
     <section>
       <p className="eyebrow">
-        <Link to="/app">← 我的群組</Link>
+        <Link to="/app/settings">← 設定</Link>
       </p>
       <h1>邀請連結</h1>
 

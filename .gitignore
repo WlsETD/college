@@ -5,6 +5,9 @@ coverage/
 # Functions 的打包產物。只鎖這一個路徑——寫成 lib/ 會連
 # apps/web/src/lib/ 與 functions/src/lib/ 的原始碼一起排除掉。
 /functions/lib/
+
+# 字型子集化的來源檔快取，由 scripts/build-fonts.mjs 自動下載
+apps/web/.font-cache/
 .DS_Store
 
 # 環境變數：只有 .env.example 進版控

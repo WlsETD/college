@@ -2,9 +2,10 @@
 
 大學班級共用的課程進度、作業提醒與考試重點複習工具。
 
-> **目前進度：階段一步驟 4 / 8。**
+> **目前進度：階段一步驟 5 / 8。**
 > 專案骨架、`packages/shared` 的純函式、安全規則與權限表測試、
-> Google 登入／建立群組／邀請連結／多群組切換已完成。
+> Google 登入／建立群組／邀請連結／多群組切換、
+> 設計 token 與 Cubic 11 子集化、外殼與底部導覽已完成。
 > 架構藍圖見 [`docs/00_architecture.html`](docs/00_architecture.html)，
 > 權限規格見 [`docs/01_spec_section3.md`](docs/01_spec_section3.md)。
 
@@ -84,12 +85,13 @@ pnpm typecheck   # 型別檢查
 pnpm build       # 前端 + Functions 打包
 ```
 
-目前共 491 個測試：
+目前共 513 個測試：
 
 | 套件 | 數量 | 內容 |
 | --- | --- | --- |
 | `packages/shared` | 115 | 時區、目錄解析、下堂課、關鍵字、假日的純函式 |
 | `functions` | 61 | 邀請 token、速率限制、roles 比對的純函式 |
+| `apps/web` | 22 | 設計 token、字型分片、點陣圖示的規則檢查 |
 | `packages/rules-tests` | 315 | 安全規則逐格對應權限表，外加 Callable 與觸發器的整合測試 |
 
 `packages/rules-tests` 是唯一需要 Emulator 的套件，它的 `test` script 會自己
@@ -110,7 +112,13 @@ apps/web/            React + Vite + TypeScript，PWA。LIFF 頁面同一個 app�
   src/lib/firebase.ts  SDK 初始化、Emulator 連線、App Check
   src/lib/auth.tsx     Google 登入與 AuthProvider
   src/lib/groups.ts    建立群組、多群組索引、邀請連結的 Callable
-  src/routes/          /login、/app、/app/:gid/invite、/join/:token
+  src/lib/groupContext.tsx  目前群組與清單，外殼與設定頁共用
+  src/components/      AppShell（頁首）、BottomNav、PixelIcon（16x16 點陣）
+  src/routes/          /login、/app/*、/app/settings/invite/:gid、/join/:token
+  src/styles/tokens.css     設計 token，四條硬規則寫在檔頭
+  src/styles/fonts.css      由 scripts/build-fonts.mjs 產生，不要手改
+  scripts/build-fonts.mjs   Cubic 11 子集化與 unicode-range 分片
+  public/fonts/             分片後的 woff2 與 OFL 授權
 functions/           Cloud Functions v2，TypeScript
   src/options.ts       區域與 App Check 設定（每個函式明確帶上，不用 setGlobalOptions）
   src/invites.ts       createInvite / rotateInvite / updateInviteExpiry / listInvites
@@ -131,6 +139,25 @@ firestore.rules      Firestore 安全規則
 storage.rules        Storage 安全規則
 firestore.indexes.json
 ```
+
+## 字型
+
+介面的標題、按鈕、標籤、數字用 **Cubic 11（俐方體十一號）**，SIL OFL 授權，
+授權全文在 `apps/web/public/fonts/OFL.txt`。使用者輸入的長內容與公式用 Noto Sans TC。
+
+重新產生分片（改了介面文案之後值得跑一次，新字才會進 `ui` 那一片）：
+
+```bash
+pnpm --filter @jindu/web fonts
+```
+
+腳本會從官方 repo 的固定 tag 下載 ttf、比對 SHA-256、快取在 `apps/web/.font-cache/`
+（已 gitignore），再輸出 21 片 woff2 與對應的 `@font-face`。
+一般畫面只會下載 `core` + `ui` 兩片，約 47.8 KB；整份字型是 400 KB。
+
+**像素字級只有 12 / 24 / 36px。** Cubic 11 的一個點是 100 font units、em 是 1200，
+所以一個 em 裡剛好 12 個點，只有 12 的整數倍才會一個點對一個 CSS 像素。
+`apps/web/test/design-tokens.test.ts` 會守住這條。
 
 ## 開發時必須記得的三件事
 
@@ -162,5 +189,7 @@ Firebase CLI 至今無法正確處理 pnpm workspaces 的 symlink 相依
 - [ ] `packages/shared/data/holidays.json` **尚未經人工核對**，且不含學校行事曆的停課日
 - [x] 安全規則與權限表測試（步驟 3）
 - [ ] Firebase 專案、Blaze 方案、App Check 設定（需手動操作）
-- [ ] 前端 bundle 目前 692 kB（Firebase SDK 佔大宗），上線前要做 code splitting
+- [ ] 前端 bundle 目前 694 kB（Firebase SDK 佔大宗），上線前要做 code splitting
+- [ ] `fonts.css` 35 kB（gzip 13 kB），大部分是 21 片的 unicode-range 清單，可再壓
+- [ ] 綠色 `#008751` 對米色底只有 4.14:1，目前規定只放白底；若要放米底需另定一個深綠
 - [ ] Cubic 11 字型子集化與 unicode-range 分片（步驟 5）

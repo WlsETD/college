@@ -1,47 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../lib/auth';
-import { readActiveGid, writeActiveGid } from '../lib/activeGroup';
-import { createGroup, watchMyGroups, type MyGroup } from '../lib/groups';
+import { ROLE_LABEL, useGroups } from '../lib/groupContext';
+import { createGroup } from '../lib/groups';
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: '擁有者',
-  admin: '管理者',
-  viewer: '檢視者',
-};
-
-export default function GroupsPage() {
+export default function SettingsPage() {
   const { user, signOutNow } = useAuth();
-  const [groups, setGroups] = useState<MyGroup[] | null>(null);
-  const [activeGid, setActiveGid] = useState<string | null>(() => readActiveGid());
+  const { groups, activeGid, switchTo, error: groupError } = useGroups();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const uid = user?.uid ?? null;
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return watchMyGroups(
-      uid,
-      (rows) => {
-        setGroups(rows);
-        setActiveGid((current) => {
-          if (current && rows.some((g) => g.gid === current)) return current;
-          const fallback = rows[0]?.gid ?? null;
-          writeActiveGid(fallback);
-          return fallback;
-        });
-      },
-      (err) => setError(err.message),
-    );
-  }, [uid]);
-
-  function switchTo(gid: string) {
-    writeActiveGid(gid);
-    setActiveGid(gid);
-  }
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -65,24 +34,25 @@ export default function GroupsPage() {
 
   return (
     <section>
-      <p className="eyebrow">階段一 · 步驟 4 · 帳號與群組</p>
-      <h1>我的群組</h1>
+      <h1>設定</h1>
 
-      <p className="hint">
-        {user?.displayName ?? user?.email ?? '（未命名）'}
-        <button type="button" className="btn btn-plain" onClick={() => void signOutNow()}>
+      {groupError ? <p className="error">{groupError}</p> : null}
+      {error ? <p className="error">{error}</p> : null}
+
+      <div className="panel">
+        <h2>帳號</h2>
+        <p className="hint">{user?.displayName ?? user?.email ?? '（未命名）'}</p>
+        <button type="button" className="btn" onClick={() => void signOutNow()}>
           登出
         </button>
-      </p>
+      </div>
 
-      {error ? <p className="error">▲ {error}</p> : null}
+      <h2>我的群組</h2>
 
       {groups === null ? <p className="hint">載入中…</p> : null}
 
       {groups !== null && groups.length === 0 ? (
-        <p className="hint">
-          還沒有加入任何群組。建立一個新的，或請同學把邀請連結給你。
-        </p>
+        <p className="hint">還沒有加入任何群組。建立一個新的，或請同學把邀請連結給你。</p>
       ) : null}
 
       {groups !== null && groups.length > 0 ? (
@@ -98,12 +68,16 @@ export default function GroupsPage() {
                 </div>
                 <div className="card-actions">
                   {active ? null : (
-                    <button type="button" className="btn btn-small" onClick={() => switchTo(group.gid)}>
+                    <button
+                      type="button"
+                      className="btn btn-small"
+                      onClick={() => switchTo(group.gid)}
+                    >
                       切換
                     </button>
                   )}
                   {group.role === 'viewer' ? null : (
-                    <Link className="btn btn-small" to={`/app/${group.gid}/invite`}>
+                    <Link className="btn btn-small" to={`/app/settings/invite/${group.gid}`}>
                       邀請連結
                     </Link>
                   )}
@@ -130,9 +104,7 @@ export default function GroupsPage() {
         <button type="submit" className="btn" disabled={busy || name.trim() === ''}>
           {busy ? '建立中…' : '建立'}
         </button>
-        <p className="hint">
-          建立後群組會晚一兩秒才出現在清單上——索引由 Cloud Function 維護。
-        </p>
+        <p className="hint">建立後群組會晚一兩秒才出現在清單上——索引由 Cloud Function 維護。</p>
       </form>
     </section>
   );
