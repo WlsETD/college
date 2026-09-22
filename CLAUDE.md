@@ -8,7 +8,7 @@
 ## 目前進度：階段一，步驟 5 / 8 已完成
 
 ```
-（本次） 設計 token、Cubic 11 子集化、外殼與底部導覽           ← 步驟 5
+32dca5b 設計 token、Cubic 11 子集化、外殼與底部導覽           ← 步驟 5
 afff92b 實作 Google 登入、建立群組、邀請連結與多群組切換      ← 步驟 4
 ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← 步驟 3
 882349a 實作 packages/shared 的共用純函式與單元測試        ← 步驟 2
