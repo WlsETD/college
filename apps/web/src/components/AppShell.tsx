@@ -1,8 +1,7 @@
 /**
  * 應用程式外殼：頁首 + 內容 + 底部導覽。
  *
- * 頁首左邊是目前群組（點了跳到設定頁切換），右邊是目前學期。
- * 學期要到步驟 6 才有資料，先顯示「尚未設定」。
+ * 頁首左邊是目前群組（點了跳到設定頁切換），右邊是角色與目前學期。
  */
 
 import { Link, Outlet } from 'react-router-dom';
@@ -11,7 +10,7 @@ import { ROLE_LABEL, useGroups } from '../lib/groupContext';
 import BottomNav from './BottomNav';
 
 export default function AppShell() {
-  const { activeGroup, groups } = useGroups();
+  const { activeGroup, groups, activeSemester, activeSemesterId } = useGroups();
 
   return (
     <div className="app-shell">
@@ -23,7 +22,12 @@ export default function AppShell() {
             <span className="sr-only">切換群組</span>
           </Link>
           <span className="app-title">
-            {activeGroup ? (ROLE_LABEL[activeGroup.role] ?? activeGroup.role) : '—'} · 學期尚未設定
+            {activeGroup ? (ROLE_LABEL[activeGroup.role] ?? activeGroup.role) : '—'} ·{' '}
+            {activeSemester
+              ? `${activeSemester.name} 學期`
+              : activeSemesterId
+                ? '學期載入中…'
+                : '學期尚未設定'}
           </span>
         </div>
       </header>

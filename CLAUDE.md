@@ -5,9 +5,10 @@
 
 ---
 
-## 目前進度：階段一，步驟 5 / 8 已完成
+## 目前進度：階段一，步驟 6 / 8 已完成
 
 ```
+（本次） 學期、科目、章節樹 CRUD 排序、開學設定精靈           ← 步驟 6
 32dca5b 設計 token、Cubic 11 子集化、外殼與底部導覽           ← 步驟 5
 afff92b 實作 Google 登入、建立群組、邀請連結與多群組切換      ← 步驟 4
 ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← 步驟 3
@@ -15,10 +16,11 @@ ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← �
 0401725 建立 Monorepo 骨架與開發環境                       ← 步驟 1
 ```
 
-驗證狀態：`pnpm test` 513 個測試全過（shared 115 + rules-tests 315 + functions 61 + web 22）、
+驗證狀態：`pnpm test` 545 個測試全過（shared 147 + rules-tests 315 + functions 61 + web 22）、
 `pnpm typecheck` 通過、`pnpm build` 通過。
-另外在 Emulator + 瀏覽器實際走過一遍：登入 → 建立群組 → 產生邀請連結 →
-換帳號開連結加入（角色為檢視者）→ 建立第二個群組 → 切換 → 五個分頁的外殼與導覽。
+另外在 Emulator + 瀏覽器實際走過一遍：登入 → 建立群組 → 建立學期 →
+開學設定精靈（科目 → 貼目錄建 11 個節點 → 邀請連結）→ 科目排序 →
+章節改名／排序／設為進度／連同小節刪除 → 換成檢視者帳號確認整個編輯介面消失。
 
 `packages/rules-tests` 是唯一需要 Emulator 的套件，`test` script 會先打包 Functions，
 再用 `firebase emulators:exec --project demo-jindu` 起 Auth / Firestore / Storage /
@@ -48,8 +50,8 @@ Functions。**它會占用 8080 / 9199 / 9099 / 5001，和 `pnpm emu` 衝突。*
 | 3 | Firestore 資料模型 + `firestore.rules` + `storage.rules` + 權限表逐格測試 | ✅ 完成 |
 | 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | ✅ 完成 |
 | 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | ✅ 完成 |
-| 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | ← 下一步 |
-| 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | |
+| 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | ✅ 完成 |
+| 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | ← 下一步 |
 | 8 | 總覽／作業／筆記／進度四頁、缺重點標示、Emulator 全流程走查 | |
 
 階段二（**本次不做**）：考試、閃卡、LINE / LIFF、推播通知、AI 產生重點。
@@ -116,6 +118,11 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 | 字型分片 | `core`（非中文）＋`ui`（掃描原始碼取得的介面用字）＋19 片依碼位切的 `cjk-NN` | 一般畫面只下載 core + ui 共 47.8 KB，而不是整份 400 KB |
 | 綠色的使用範圍 | `--green` 只放白底 | 對米色底 `#FFF1E8` 只有 4.14:1，未達 AA |
 | 導覽圖示 | 16×16 點陣，顯示 32px（2×） | 16px 在手機上太小看不清，非整數倍會糊 |
+| 排序的實作 | 上下移動＝和鄰居對調 `order`，固定兩筆寫入 | UI 是 ↑↓ 按鈕不是拖曳，對調最簡單也不會用光間隔；計算在 `packages/shared/src/order.ts`，有 32 個測試 |
+| 「目前學期」 | 記在 `groups/{gid}.activeSemesterId` | 若改成在學期文件上放 `isActive`，要同時改兩筆才能保證只有一個，規則擋不住中間狀態 |
+| 刪章 | 連同底下的小節一起軟刪除（同一個 batch） | 留著孤兒小節在兩層樹上根本顯示不出來 |
+| 刪除確認 | 自製兩段式 `ConfirmButton`，不用 `window.confirm()` | 原生對話框是系統樣式，和像素風差太多；而且會卡住自動化測試 |
+| 章節查詢 | 整棵樹一次查回來（只帶 `deletedAt == null`），在前端組結構 | 一個科目的章節就是一份目錄，量很小，省掉複合索引 |
 
 ---
 

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import SemesterSection from '../components/SemesterSection';
 import { useAuth } from '../lib/auth';
 import { ROLE_LABEL, useGroups } from '../lib/groupContext';
 import { createGroup } from '../lib/groups';
 
 export default function SettingsPage() {
   const { user, signOutNow } = useAuth();
-  const { groups, activeGid, switchTo, error: groupError } = useGroups();
+  const { groups, activeGid, switchTo, isManager, error: groupError } = useGroups();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,26 @@ export default function SettingsPage() {
           登出
         </button>
       </div>
+
+      {activeGid ? (
+        <>
+          <SemesterSection />
+
+          <div className="panel">
+            <h2>課程內容</h2>
+            <div className="choices">
+              <Link className="btn" to="/app/settings/subjects">
+                科目與章節
+              </Link>
+              {isManager ? (
+                <Link className="btn" to="/app/setup">
+                  開學設定精靈
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </>
+      ) : null}
 
       <h2>我的群組</h2>
 

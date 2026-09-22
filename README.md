@@ -2,10 +2,11 @@
 
 大學班級共用的課程進度、作業提醒與考試重點複習工具。
 
-> **目前進度：階段一步驟 5 / 8。**
+> **目前進度：階段一步驟 6 / 8。**
 > 專案骨架、`packages/shared` 的純函式、安全規則與權限表測試、
 > Google 登入／建立群組／邀請連結／多群組切換、
-> 設計 token 與 Cubic 11 子集化、外殼與底部導覽已完成。
+> 設計 token 與 Cubic 11 子集化、外殼與底部導覽、
+> 學期／科目／章節樹的 CRUD 與排序、開學設定精靈已完成。
 > 架構藍圖見 [`docs/00_architecture.html`](docs/00_architecture.html)，
 > 權限規格見 [`docs/01_spec_section3.md`](docs/01_spec_section3.md)。
 
@@ -85,11 +86,11 @@ pnpm typecheck   # 型別檢查
 pnpm build       # 前端 + Functions 打包
 ```
 
-目前共 513 個測試：
+目前共 545 個測試：
 
 | 套件 | 數量 | 內容 |
 | --- | --- | --- |
-| `packages/shared` | 115 | 時區、目錄解析、下堂課、關鍵字、假日的純函式 |
+| `packages/shared` | 147 | 時區、目錄解析、下堂課、關鍵字、假日、排序的純函式 |
 | `functions` | 61 | 邀請 token、速率限制、roles 比對的純函式 |
 | `apps/web` | 22 | 設計 token、字型分片、點陣圖示的規則檢查 |
 | `packages/rules-tests` | 315 | 安全規則逐格對應權限表，外加 Callable 與觸發器的整合測試 |
@@ -114,7 +115,8 @@ apps/web/            React + Vite + TypeScript，PWA。LIFF 頁面同一個 app�
   src/lib/groups.ts    建立群組、多群組索引、邀請連結的 Callable
   src/lib/groupContext.tsx  目前群組與清單，外殼與設定頁共用
   src/components/      AppShell（頁首）、BottomNav、PixelIcon（16x16 點陣）
-  src/routes/          /login、/app/*、/app/settings/invite/:gid、/join/:token
+  src/lib/semesters.ts / subjects.ts / chapters.ts  學期、科目、章節樹
+  src/routes/          /login、/app/*、/app/setup（開學設定精靈）、/join/:token
   src/styles/tokens.css     設計 token，四條硬規則寫在檔頭
   src/styles/fonts.css      由 scripts/build-fonts.mjs 產生，不要手改
   scripts/build-fonts.mjs   Cubic 11 子集化與 unicode-range 分片
@@ -130,6 +132,7 @@ packages/rules-tests/ 安全規則測試（@firebase/rules-unit-testing + Emulat
   test/storage.test.ts            下載、上傳、30 MB、video/*、刪除物件
 packages/shared/     共用型別與純函式，前端與 Functions 共用
   src/tz.ts            Asia/Taipei 固定時區工具
+  src/order.ts         order 欄位的計算（間隔 100、插入、上下移動、重排）
   src/outline.ts       目錄文字解析
   src/nextClass.ts     下堂課日期計算
   src/keywords.ts      批次關鍵字解析

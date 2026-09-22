@@ -99,6 +99,28 @@ export function watchMyGroups(
 }
 
 // -----------------------------------------------------------------------------
+// 群組文件本身
+// -----------------------------------------------------------------------------
+
+export interface GroupDoc {
+  id: string;
+  name: string;
+  ownerUid: string;
+  roles: Record<string, Role>;
+  activeSemesterId: string | null;
+}
+
+/** 訂閱目前群組的文件。權限與「目前學期」都記在這裡。 */
+export function watchGroupDoc(
+  gid: string,
+  onChange: (group: GroupDoc | null) => void,
+  onError: (err: Error) => void,
+): Unsubscribe {
+  const ref = doc(db, `groups/${gid}`).withConverter(docConverter<GroupDoc>());
+  return onSnapshot(ref, (snap) => onChange(snap.exists() ? snap.data() : null), onError);
+}
+
+// -----------------------------------------------------------------------------
 // 群組成員（給「成員清單與角色」用）
 // -----------------------------------------------------------------------------
 

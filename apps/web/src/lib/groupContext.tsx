@@ -16,13 +16,23 @@ import {
 
 import { readActiveGid, writeActiveGid } from './activeGroup';
 import { useAuth } from './auth';
-import { watchMyGroups, type MyGroup } from './groups';
+import { watchGroupDoc, watchMyGroups, type GroupDoc, type MyGroup } from './groups';
+import { watchSemesters, type SemesterRow } from './semesters';
 
 export interface GroupState {
   /** null 代表還在載入。 */
   groups: MyGroup[] | null;
   activeGid: string | null;
+  /** userGroups 索引上的那一筆，只有名稱與角色。 */
   activeGroup: MyGroup | null;
+  /** 群組文件本身，權限與目前學期記在這裡。 */
+  groupDoc: GroupDoc | null;
+  /** 目前使用者在這個群組是不是管理者（擁有者或管理者）。 */
+  isManager: boolean;
+  activeSemesterId: string | null;
+  /** 這個群組的所有未刪除學期，新的在前。 */
+  semesters: SemesterRow[] | null;
+  activeSemester: SemesterRow | null;
   switchTo: (gid: string) => void;
   error: string | null;
 }
@@ -33,6 +43,8 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [groups, setGroups] = useState<MyGroup[] | null>(null);
   const [activeGid, setActiveGid] = useState<string | null>(() => readActiveGid());
+  const [groupDoc, setGroupDoc] = useState<GroupDoc | null>(null);
+  const [semesters, setSemesters] = useState<SemesterRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const uid = user?.uid ?? null;
@@ -58,19 +70,41 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     );
   }, [uid]);
 
+  useEffect(() => {
+    if (!uid || !activeGid) {
+      setGroupDoc(null);
+      setSemesters(null);
+      return undefined;
+    }
+    const stopGroup = watchGroupDoc(activeGid, setGroupDoc, (err) => setError(err.message));
+    const stopSemesters = watchSemesters(activeGid, setSemesters, (err) => setError(err.message));
+    return () => {
+      stopGroup();
+      stopSemesters();
+    };
+  }, [uid, activeGid]);
+
   const value = useMemo<GroupState>(() => {
     const activeGroup = groups?.find((g) => g.gid === activeGid) ?? null;
+    const role = uid && groupDoc ? groupDoc.roles?.[uid] : undefined;
+    const activeSemesterId = groupDoc?.activeSemesterId ?? null;
+
     return {
       groups,
       activeGid,
       activeGroup,
+      groupDoc,
+      isManager: role === 'owner' || role === 'admin',
+      activeSemesterId,
+      semesters,
+      activeSemester: semesters?.find((s) => s.id === activeSemesterId) ?? null,
       error,
       switchTo: (gid: string) => {
         writeActiveGid(gid);
         setActiveGid(gid);
       },
     };
-  }, [groups, activeGid, error]);
+  }, [groups, activeGid, groupDoc, semesters, uid, error]);
 
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>;
 }

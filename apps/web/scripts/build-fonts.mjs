@@ -21,7 +21,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -185,6 +185,13 @@ async function main() {
 
   const outDir = join(webRoot, 'public', 'fonts');
   await mkdir(outDir, { recursive: true });
+
+  // 片數會隨介面文案增減而變動，先清掉舊的，免得留下沒人引用的孤兒檔。
+  for (const entry of await readdir(outDir)) {
+    if (entry.startsWith('cubic11-') && entry.endsWith('.woff2')) {
+      await rm(join(outDir, entry));
+    }
+  }
 
   const faces = [];
   let total = 0;

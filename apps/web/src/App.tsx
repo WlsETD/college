@@ -14,7 +14,10 @@ import { GroupProvider } from './lib/groupContext';
 import InvitePage from './routes/InvitePage';
 import JoinPage from './routes/JoinPage';
 import LoginPage from './routes/LoginPage';
+import ChaptersPage from './routes/ChaptersPage';
 import PlaceholderPage from './routes/PlaceholderPage';
+import SetupWizardPage from './routes/SetupWizardPage';
+import SubjectsPage from './routes/SubjectsPage';
 import SettingsPage from './routes/SettingsPage';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -105,6 +108,9 @@ export default function App() {
               />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/invite/:gid" element={<InvitePage />} />
+              <Route path="settings/subjects" element={<SubjectsPage />} />
+              <Route path="settings/subjects/:subId" element={<ChaptersPage />} />
+              <Route path="setup" element={<SetupWizardPage />} />
             </Route>
 
             <Route

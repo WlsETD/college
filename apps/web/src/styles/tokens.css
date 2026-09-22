@@ -514,3 +514,176 @@ a {
   white-space: nowrap;
   border: 0;
 }
+
+/* =============================================================================
+   步驟 6：學期、科目、章節樹、開學設定精靈
+   ========================================================================== */
+
+/* 卡片在窄螢幕上讓動作列換到下一行，別把按鈕擠扁。 */
+.card-stack {
+  align-items: flex-start;
+}
+
+.card-stack .card-actions {
+  flex-wrap: wrap;
+}
+
+.field-label {
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  color: var(--muted);
+  margin: var(--sp-3) 0 var(--sp-1);
+}
+
+.field textarea {
+  min-height: calc(var(--tap-min) * 3);
+  padding: var(--sp-2) var(--sp-3);
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* --- 危險操作：紅框 + ▲，不只靠顏色 --------------------------------------- */
+.btn-danger {
+  border-color: var(--red);
+  color: var(--red);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--red);
+}
+
+/* --- 上課時間 ------------------------------------------------------------- */
+.slot-list {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.slot {
+  border: var(--border-width) solid var(--line);
+  background: var(--ground);
+  padding: var(--sp-3);
+}
+
+.weekday-row {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+
+.slot-times {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.slot-times .field {
+  margin-bottom: 0;
+}
+
+/* --- 科目 12 色 ----------------------------------------------------------- */
+.color-picker {
+  border: none;
+  margin: var(--sp-3) 0;
+  padding: 0;
+}
+
+.color-picker legend {
+  padding: 0;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--sp-2);
+}
+
+.color-swatch {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  border: var(--border-width) solid var(--line);
+  background: var(--subject-color);
+  color: var(--on-accent);
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-md);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--press), box-shadow var(--press);
+}
+
+/* 選中的：外框加粗 + 硬陰影 + 勾勾，三重標示。 */
+.color-swatch-on {
+  border-width: 4px;
+  box-shadow: var(--hard-shadow);
+}
+
+.color-swatch:active {
+  transform: translate(var(--shadow-offset), var(--shadow-offset));
+  box-shadow: none;
+}
+
+.preview-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+
+/* --- 章節樹 --------------------------------------------------------------- */
+.tree {
+  list-style: none;
+  margin: var(--sp-3) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+
+/* 小節往內縮一格，並用左邊的直線標出層級。 */
+.tree-sections {
+  margin: var(--sp-2) 0 0 var(--sp-4);
+  padding-left: var(--sp-3);
+  border-left: var(--border-width) solid var(--muted);
+}
+
+/* --- 精靈的步驟指示 ------------------------------------------------------- */
+.steps {
+  list-style: none;
+  display: flex;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+  padding: 0;
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--muted);
+  border-top: 4px solid var(--muted);
+  padding-top: var(--sp-2);
+}
+
+.step-mark {
+  font-family: var(--px-font);
+  -webkit-font-smoothing: none;
+  font-size: var(--px-sm);
+  line-height: var(--px-sm-line);
+  min-width: 24px;
+  text-align: center;
+  border: var(--border-width) solid currentColor;
+}
+
+.step-on {
+  color: var(--green);
+  border-top-color: var(--green);
+}
+
+.step-done {
+  color: var(--ink);
+  border-top-color: var(--ink);
+}
