@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --project demo-jindu --only firestore,storage \"vitest run\"",
-    "test:watch": "firebase emulators:exec --project demo-jindu --only firestore,storage \"vitest\"",
+    "test": "pnpm --filter @jindu/functions build && firebase emulators:exec --project demo-jindu --only auth,firestore,storage,functions \"vitest run\"",
+    "test:watch": "firebase emulators:exec --project demo-jindu --only auth,firestore,storage,functions \"vitest\"",
     "test:bare": "vitest run",
     "typecheck": "tsc --noEmit"
   },

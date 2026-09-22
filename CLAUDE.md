@@ -5,20 +5,26 @@
 
 ---
 
-## 目前進度：階段一，步驟 3 / 8 已完成
+## 目前進度：階段一，步驟 4 / 8 已完成
 
 ```
+（本次） 實作 Google 登入、建立群組、邀請連結與多群組切換      ← 步驟 4
 ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← 步驟 3
 882349a 實作 packages/shared 的共用純函式與單元測試        ← 步驟 2
 0401725 建立 Monorepo 骨架與開發環境                       ← 步驟 1
 ```
 
-驗證狀態：`pnpm test` 397 個測試全過（shared 115 + rules-tests 282）、
+驗證狀態：`pnpm test` 491 個測試全過（shared 115 + functions 61 + rules-tests 315）、
 `pnpm typecheck` 通過、`pnpm build` 通過。
+另外在 Emulator + 瀏覽器實際走過一遍：登入 → 建立群組 → 產生邀請連結 →
+換帳號開連結加入（角色為檢視者）→ 建立第二個群組 → 切換。
 
-規則測試放在 `packages/rules-tests`，`test` script 會自己用
-`firebase emulators:exec --project demo-jindu --only firestore,storage` 起模擬器，
-所以 `pnpm test` 一次跑得到。**但它會占用 8080 / 9199，和 `pnpm emu` 衝突。**
+`packages/rules-tests` 是唯一需要 Emulator 的套件，`test` script 會先打包 Functions，
+再用 `firebase emulators:exec --project demo-jindu` 起 Auth / Firestore / Storage /
+Functions。**它會占用 8080 / 9199 / 9099 / 5001，和 `pnpm emu` 衝突。**
+
+本機開發用的 `apps/web/.env.local`：`VITE_USE_EMULATOR=true`、
+`VITE_FIREBASE_PROJECT_ID=demo-jindu`，其餘維持佔位值。
 
 ---
 
@@ -39,8 +45,8 @@ ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← �
 | 1 | pnpm workspaces 骨架、TS/Vitest、Emulator 設定、`.env.example`、README | ✅ 完成 |
 | 2 | `packages/shared` 純函式 + 單元測試 | ✅ 完成 |
 | 3 | Firestore 資料模型 + `firestore.rules` + `storage.rules` + 權限表逐格測試 | ✅ 完成 |
-| 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | ← 下一步 |
-| 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | |
+| 4 | Google 登入、建立群組、邀請連結（`joinByInvite` / `rotateInvite`）、多群組切換 | ✅ 完成 |
+| 5 | 設計 token、Cubic 11 子集化、外殼與底部導覽 | ← 下一步 |
 | 6 | 學期、科目、章節樹 CRUD 排序、開學設定精靈三步驟 | |
 | 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | |
 | 8 | 總覽／作業／筆記／進度四頁、缺重點標示、Emulator 全流程走查 | |
@@ -73,7 +79,9 @@ ee9af2d 實作 Firestore／Storage 安全規則與權限表逐格測試   ← �
 **三、App Check 的強制不寫在安全規則裡。**
 `request.app` 在 Emulator 中不受支援，寫進規則會讓規則測試整批失敗。
 正確做法是在 Firebase Console 對 Firestore / Storage 分別開啟 enforcement，
-Cloud Functions 用 `enforceAppCheck: true`（已設於 `functions/src/index.ts`）。
+Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`，
+**每個函式明確帶上**——`setGlobalOptions` 因為 ESM 的載入順序會套不上去，
+詳見該檔註解）。
 
 ---
 
@@ -96,6 +104,12 @@ Cloud Functions 用 `enforceAppCheck: true`（已設於 `functions/src/index.ts`
 | 角色變更一次只能動一個人 | 移除檢視者／自行退出都限制 `removedKeys().size() == 1` | 讓上面的計數判斷能精確對應到單一動作 |
 | 已軟刪除的文件 | 只能復原，不能一邊維持 `deletedAt` 一邊改內容 | 規格沒寫，取較嚴的一邊；復原時可同時改欄位 |
 | 規則測試套件 | 獨立的 `packages/rules-tests`，`test` script 內含 `firebase emulators:exec` | `pnpm test` 就能一起跑到，不必要求先手動開模擬器 |
+| Functions 設定 | 不用 `setGlobalOptions`，區域與 `enforceAppCheck` 由 `options.ts` 匯出常數，每個函式明確帶上 | ESM 的 import 會在 `index.ts` 本體執行前就把子模組的函式定義完，全域設定套不上去（實際踩過：函式跑到 us-central1 且沒開 App Check） |
+| `userGroups` 索引 | 由 `onGroupWritten` 觸發器維護，前端只讀 | 規則對它是 `allow write: if false`，非成員也寫不到自己的索引 |
+| 成員離開後的 `members` 文件 | 同一個觸發器軟刪除 | 規則只讓本人寫自己那筆，被踢出後沒人能清 |
+| 邀請連結 | 可以有多張；`rotateInvite` 會把該群組所有還有效的邀請標成 `revokedAt` 再發一張新的 | 型別裡 `revokedAt` 與 `expiresAt` 都有，這樣兩個欄位才各司其職 |
+| 邀請的明碼 token | 只在 `createInvite` / `rotateInvite` 的回傳值出現一次 | Firestore 只存 hash，關掉就拿不回來，只能重新產生 |
+| 前端路由 | `react-router-dom` v6 | 架構圖已經規定了 `/app/*`、`/join/:token`、`/liff/*` 的路徑 |
 
 ---
 

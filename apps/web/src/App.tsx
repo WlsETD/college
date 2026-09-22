@@ -1,35 +1,60 @@
-import { holidayFile, nextClassDate, toDateKey, holidayDates } from '@jindu/shared';
-
 /**
- * 階段一步驟 1 的骨架畫面。
- * 這裡只驗證 workspace 連通與共用純函式可用，正式 UI 於步驟 5 之後實作。
+ * 路由骨架。
+ *
+ * 正式的外殼與底部導覽在步驟 5 才做，這裡只把步驟 4 的四個畫面接起來：
+ * 登入、我的群組（含建立與切換）、邀請連結管理、邀請落地頁。
  */
-export default function App() {
-  const now = new Date();
-  const demo = nextClassDate({
-    now,
-    schedule: [
-      { weekday: 2, start: '09:10' },
-      { weekday: 5, start: '13:20' },
-    ],
-    holidays: holidayDates(),
-  });
 
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
+
+import { AuthProvider, useAuth } from './lib/auth';
+import GroupsPage from './routes/GroupsPage';
+import InvitePage from './routes/InvitePage';
+import JoinPage from './routes/JoinPage';
+import LoginPage from './routes/LoginPage';
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <p className="hint">確認登入狀態…</p>;
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  return <>{children}</>;
+}
+
+export default function App() {
   return (
-    <main className="shell">
-      <p className="eyebrow">階段一 · 步驟 1 骨架</p>
-      <h1>進度本</h1>
-      <dl className="probe">
-        <dt>今天（台北）</dt>
-        <dd>{toDateKey(now)}</dd>
-        <dt>示範科目的下堂課</dt>
-        <dd>{demo ? toDateKey(demo) : '—'}</dd>
-        <dt>假日資料</dt>
-        <dd>
-          {holidayFile.schoolYear} 學年 · {holidayFile.holidays.length} 筆
-          {holidayFile.verified ? '' : '（尚未核對）'}
-        </dd>
-      </dl>
-    </main>
+    <BrowserRouter
+      // 先開起 v7 的兩個行為旗標，免得 console 一直跳升級警告。
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
+      <AuthProvider>
+        <main className="shell">
+          <Routes>
+            <Route path="/" element={<Navigate to="/app" replace />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/join/:token" element={<JoinPage />} />
+            <Route
+              path="/app"
+              element={
+                <RequireAuth>
+                  <GroupsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app/:gid/invite"
+              element={
+                <RequireAuth>
+                  <InvitePage />
+                </RequireAuth>
+              }
+            />
+            <Route path="*" element={<p className="hint">找不到這個頁面。</p>} />
+          </Routes>
+        </main>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

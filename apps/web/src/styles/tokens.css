@@ -90,3 +90,180 @@ h1 {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+
+/* -----------------------------------------------------------------------------
+   步驟 4 的臨時元件樣式。
+   正式的元件與底部導覽在步驟 5 重做，這裡只求可用且符合三條硬規則：
+   觸控範圍 ≥ 44x44、按下時硬陰影消失並位移 3px、狀態不只靠顏色。
+   -------------------------------------------------------------------------- */
+
+h2 {
+  font-family: var(--px-font);
+  font-size: var(--px-md);
+  margin: 0 0 8px;
+}
+
+a {
+  color: var(--green);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.error {
+  color: var(--red);
+  border: 2px solid var(--red);
+  background: var(--panel);
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.btn {
+  font-family: var(--px-font);
+  font-size: var(--px-sm);
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: 0 16px;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--press-offset) var(--press-offset) 0 var(--shadow);
+  transition: transform 80ms steps(2), box-shadow 80ms steps(2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(var(--press-offset), var(--press-offset));
+  box-shadow: none;
+}
+
+.btn:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: translate(var(--press-offset), var(--press-offset));
+}
+
+.btn-small {
+  padding: 0 10px;
+}
+
+.btn-on {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.btn-plain {
+  border: none;
+  box-shadow: none;
+  color: var(--green);
+  text-decoration: underline;
+  padding: 0 8px;
+}
+
+.panel {
+  border: 2px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--press-offset) var(--press-offset) 0 var(--shadow);
+  padding: 16px;
+  margin: 24px 0;
+}
+
+.panel-highlight {
+  border-color: var(--green);
+  box-shadow: var(--press-offset) var(--press-offset) 0 var(--green);
+}
+
+.card-list {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  border: 2px solid var(--line);
+  background: var(--panel);
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 目前選到的群組：左側粗邊 + ● 符號，不只靠顏色。 */
+.card-active {
+  border-left-width: 8px;
+  border-left-color: var(--green);
+}
+
+.card-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tag {
+  font-family: var(--px-font);
+  font-size: var(--px-sm);
+  color: var(--muted);
+  border: 2px solid var(--line);
+  padding: 2px 6px;
+}
+
+.tag-active {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.field span {
+  font-family: var(--px-font);
+  font-size: var(--px-sm);
+  color: var(--muted);
+}
+
+.field input {
+  min-height: var(--tap-min);
+  border: 2px solid var(--line);
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: 15px;
+  padding: 0 12px;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.token {
+  display: block;
+  word-break: break-all;
+  border: 2px dashed var(--line);
+  background: var(--ground);
+  padding: 8px;
+  font-size: 13px;
+}

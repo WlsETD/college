@@ -2,8 +2,9 @@
 
 大學班級共用的課程進度、作業提醒與考試重點複習工具。
 
-> **目前進度：階段一步驟 3 / 8。**
-> 專案骨架、`packages/shared` 的純函式、Firestore／Storage 安全規則與權限表測試已完成。
+> **目前進度：階段一步驟 4 / 8。**
+> 專案骨架、`packages/shared` 的純函式、安全規則與權限表測試、
+> Google 登入／建立群組／邀請連結／多群組切換已完成。
 > 架構藍圖見 [`docs/00_architecture.html`](docs/00_architecture.html)，
 > 權限規格見 [`docs/01_spec_section3.md`](docs/01_spec_section3.md)。
 
@@ -36,7 +37,10 @@ cp .env.example apps/web/.env.local
 ```
 
 填入 Firebase Console 的設定值。`.env*` 已被 `.gitignore` 排除，**任何真實金鑰都不得進版控**。
-只在模擬器上開發時，把 `VITE_USE_EMULATOR` 設為 `true` 即可，其餘欄位可維持佔位值。
+
+**只用 Emulator 開發時**不需要真的 Firebase 專案：把 `VITE_USE_EMULATOR` 設為 `true`、
+`VITE_FIREBASE_PROJECT_ID` 設為 `demo-jindu`（要和 `pnpm emu`、規則測試用的
+`--project demo-jindu` 一致），其餘欄位維持佔位值即可。
 
 ### 2. 啟動 Emulator
 
@@ -80,18 +84,20 @@ pnpm typecheck   # 型別檢查
 pnpm build       # 前端 + Functions 打包
 ```
 
-目前共 397 個測試：
+目前共 491 個測試：
 
 | 套件 | 數量 | 內容 |
 | --- | --- | --- |
 | `packages/shared` | 115 | 時區、目錄解析、下堂課、關鍵字、假日的純函式 |
-| `packages/rules-tests` | 282 | Firestore 與 Storage 安全規則，逐格對應權限表 |
+| `functions` | 61 | 邀請 token、速率限制、roles 比對的純函式 |
+| `packages/rules-tests` | 315 | 安全規則逐格對應權限表，外加 Callable 與觸發器的整合測試 |
 
-規則測試會自己用 `firebase emulators:exec` 起一組乾淨的 Firestore／Storage 模擬器
-（專案 id 固定 `demo-jindu`），不必事先手動啟動；但**如果你已經在跑 `pnpm emu`，
-連接埠 8080 / 9199 會衝突**，請先停掉再跑測試。
+`packages/rules-tests` 是唯一需要 Emulator 的套件，它的 `test` script 會自己
+先打包 Functions，再用 `firebase emulators:exec --project demo-jindu` 起
+Auth / Firestore / Storage / Functions，跑完自動關掉。
+**但它會占用 8080 / 9199 / 9099 / 5001，和 `pnpm emu` 衝突**，請先停掉再跑測試。
 
-只想跑規則測試：
+只想跑那一包：
 
 ```bash
 pnpm --filter @jindu/rules-tests test
@@ -101,7 +107,15 @@ pnpm --filter @jindu/rules-tests test
 
 ```
 apps/web/            React + Vite + TypeScript，PWA。LIFF 頁面同一個 app，用路由區分
+  src/lib/firebase.ts  SDK 初始化、Emulator 連線、App Check
+  src/lib/auth.tsx     Google 登入與 AuthProvider
+  src/lib/groups.ts    建立群組、多群組索引、邀請連結的 Callable
+  src/routes/          /login、/app、/app/:gid/invite、/join/:token
 functions/           Cloud Functions v2，TypeScript
+  src/options.ts       區域與 App Check 設定（每個函式明確帶上，不用 setGlobalOptions）
+  src/invites.ts       createInvite / rotateInvite / updateInviteExpiry / listInvites
+                       / joinByInvite / peekInvite
+  src/sync.ts          onGroupWritten：維護 userGroups 索引與離開成員的軟刪除
 packages/rules-tests/ 安全規則測試（@firebase/rules-unit-testing + Emulator）
   test/firestore.group.test.ts    群組、邀請、成員
   test/firestore.content.test.ts  學期、科目、章節、內容項目、軟刪除與復原
@@ -148,4 +162,5 @@ Firebase CLI 至今無法正確處理 pnpm workspaces 的 symlink 相依
 - [ ] `packages/shared/data/holidays.json` **尚未經人工核對**，且不含學校行事曆的停課日
 - [x] 安全規則與權限表測試（步驟 3）
 - [ ] Firebase 專案、Blaze 方案、App Check 設定（需手動操作）
+- [ ] 前端 bundle 目前 692 kB（Firebase SDK 佔大宗），上線前要做 code splitting
 - [ ] Cubic 11 字型子集化與 unicode-range 分片（步驟 5）

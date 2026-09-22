@@ -1,26 +1,34 @@
 /**
  * Cloud Functions 進入點。
  *
- * 階段一步驟 1 只留骨架。步驟 4 會加上：
- *   - joinByInvite：以 Admin SDK 寫入 roles。非成員無法通過安全規則自行寫入，
- *     所以邀請加入一定要走後端。
- *   - rotateInvite：重新產生 token，舊連結立即失效。
+ * 區域與 App Check 的設定集中在 options.ts，每個函式明確帶上。
+ * 不用 setGlobalOptions——ES modules 的 import 會在這個檔案的本體執行前
+ * 就把子模組的函式定義完，全域設定套不上去，詳見 options.ts 的註解。
+ *
+ * 本機用 Emulator 開發時，前端會送一張假的 App Check token（只在
+ * VITE_USE_EMULATOR=true 時），Functions Emulator 會跳過簽章驗證，
+ * 所以這裡不需要為了模擬器放寬 enforceAppCheck。
  */
 
-import { setGlobalOptions } from 'firebase-functions/v2';
 import { onCall } from 'firebase-functions/v2/https';
 import { TZ } from '@jindu/shared';
 
-setGlobalOptions({
-  region: 'asia-east1',
-  maxInstances: 10,
-  // App Check 的強制在這裡開啟，不寫進安全規則。
-  enforceAppCheck: true,
-});
+import { CALLABLE } from './options';
 
 /** 連通性檢查，供 Emulator 驗證 workspace 打包是否正確。 */
-export const ping = onCall(() => ({
+export const ping = onCall(CALLABLE, () => ({
   ok: true,
   timezone: TZ,
   at: new Date().toISOString(),
 }));
+
+export {
+  createInvite,
+  rotateInvite,
+  updateInviteExpiry,
+  listInvites,
+  joinByInvite,
+  peekInvite,
+} from './invites';
+
+export { onGroupWritten } from './sync';

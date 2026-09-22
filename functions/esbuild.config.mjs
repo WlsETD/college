@@ -10,7 +10,10 @@
 import { build } from 'esbuild';
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const EXTERNAL = ['firebase-admin', 'firebase-functions'];
+// 部署時要安裝的外部相依。firebase-admin/firestore 這類 subpath 不會被
+// 'firebase-admin' 這個字串比對到，所以要另外列 wildcard。
+const DEPENDENCIES = ['firebase-admin', 'firebase-functions'];
+const EXTERNAL = [...DEPENDENCIES, ...DEPENDENCIES.map((name) => `${name}/*`)];
 
 await build({
   entryPoints: ['src/index.ts'],
@@ -39,7 +42,7 @@ await writeFile(
       main: 'index.js',
       engines: pkg.engines,
       dependencies: Object.fromEntries(
-        EXTERNAL.map((name) => [name, pkg.dependencies[name]]),
+        DEPENDENCIES.map((name) => [name, pkg.dependencies[name]]),
       ),
     },
     null,

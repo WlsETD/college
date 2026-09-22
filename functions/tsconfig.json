@@ -1,7 +1,15 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "types": [
+      "vitest/globals",
+      "node"
+    ]
   },
-  "include": ["src", "esbuild.config.mjs"]
+  "include": [
+    "src",
+    "test",
+    "esbuild.config.mjs"
+  ]
 }

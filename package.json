@@ -11,8 +11,8 @@
     "typecheck": "pnpm -r typecheck",
     "build": "pnpm -r build",
     "dev": "pnpm --filter @jindu/web dev",
-    "emu": "firebase emulators:start --import ./.emulator-data --export-on-exit ./.emulator-data",
-    "emu:clean": "firebase emulators:start"
+    "emu": "firebase emulators:start --project demo-jindu --import ./.emulator-data --export-on-exit ./.emulator-data",
+    "emu:clean": "firebase emulators:start --project demo-jindu"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

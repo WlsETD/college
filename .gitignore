@@ -1,7 +1,10 @@
 node_modules/
 dist/
-lib/
 coverage/
+
+# Functions 的打包產物。只鎖這一個路徑——寫成 lib/ 會連
+# apps/web/src/lib/ 與 functions/src/lib/ 的原始碼一起排除掉。
+/functions/lib/
 .DS_Store
 
 # 環境變數：只有 .env.example 進版控
