@@ -2,12 +2,8 @@
 
 大學班級共用的課程進度、作業提醒與考試重點複習工具。
 
-> **目前進度：階段一步驟 6 / 8。**
-> 專案骨架、`packages/shared` 的純函式、安全規則與權限表測試、
-> Google 登入／建立群組／邀請連結／多群組切換、
-> 設計 token 與 Cubic 11 子集化、外殼與底部導覽、
-> 學期／科目／章節樹的 CRUD 與排序、開學設定精靈、
-> 我修的科目與內容項目四型已完成。
+> **目前進度：階段一 8 / 8，全部完成。**
+> 總覽／作業／筆記／進度四頁與缺重點標示是最後一步。
 > 架構藍圖見 [`docs/00_architecture.html`](docs/00_architecture.html)，
 > 權限規格見 [`docs/01_spec_section3.md`](docs/01_spec_section3.md)。
 
@@ -192,12 +188,49 @@ Firebase CLI 至今無法正確處理 pnpm workspaces 的 symlink 相依
 並產生只列外部相依的 `lib/package.json`，部署時就完全沒有 workspace 相依。
 `firebase.json` 的 `predeploy` 已掛上這個打包步驟。
 
+## 正式環境部署
+
+用的是既有的 Firebase 專案 `college-f67fa`（Console 顯示名稱「college」），
+不是新建的。`.firebaserc` 已指到它。以下是目前狀態：
+
+**已經用 CLI 做好的：**
+
+- [x] `firebase use` 連結專案（`.firebaserc`）
+- [x] Firestore 原生模式資料庫，地區 `asia-east1`（台灣）——跟 `functions/src/options.ts`
+      固定的 `REGION` 一致，這個地區建了就不能改
+- [x] 註冊 Web App，拿到 SDK 設定值，寫進 `apps/web/.env.production.local`
+      （已 gitignore，不在版控裡）
+- [x] 部署 `firestore.rules` 與 `firestore.indexes.json`
+
+**還差幾項只能在 Console 手動點的（CLI 或 API 都到不了）：**
+
+1. **升級 Blaze 方案。** [帳單設定](https://console.firebase.google.com/project/college-f67fa/usage/details) →
+   目前是 Spark，Cloud Functions 部署會直接失敗，Storage 的觸發器也要 Blaze。
+2. **開通 Firebase Storage。** [Storage 頁面](https://console.firebase.google.com/project/college-f67fa/storage) →
+   按一次「開始使用」建立預設 bucket，`firebase deploy --only storage` 才不會報
+   `Firebase Storage has not been set up`。開通後記得也部署一次 `storage.rules`。
+3. **啟用 Auth 並開 Google 登入。** [Auth 頁面](https://console.firebase.google.com/project/college-f67fa/authentication/providers) →
+   這個專案的 Auth 目前完全沒初始化過，開通後在「登入方式」加 Google provider。
+4. **App Check：建立 reCAPTCHA Enterprise 網站金鑰。** [App Check 頁面](https://console.firebase.google.com/project/college-f67fa/appcheck) →
+   註冊網站金鑰，網域填正式環境的 Hosting 網址（等 Blaze 開通、Hosting 部署後才會有）。
+   金鑰填進 `apps/web/.env.production.local` 的 `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`。
+5. **App Check enforcement。** 同一個頁面對 Firestore 與 Storage 分別按「強制」——
+   規則檔本身管不到這個（見上面「開發時必須記得的三件事」第三點）。
+6. Blaze 開通、Storage 開通之後，補跑：
+
+   ```bash
+   pnpm --filter @jindu/functions build
+   firebase deploy --only functions,storage --project college-f67fa
+   firebase deploy --only hosting --project college-f67fa   # 先跑 pnpm --filter @jindu/web build
+   ```
+
 ## 待辦
 
 - [ ] `packages/shared/data/holidays.json` **尚未經人工核對**，且不含學校行事曆的停課日
 - [x] 安全規則與權限表測試（步驟 3）
-- [ ] Firebase 專案、Blaze 方案、App Check 設定（需手動操作）
-- [ ] 前端 bundle 目前 694 kB（Firebase SDK 佔大宗），上線前要做 code splitting
+- [x] Firebase 專案已連結（`college-f67fa`）、Firestore 規則與索引已部署
+- [ ] 還差幾項只能在 Console 手動點的設定，見上面「正式環境部署」
+- [ ] 前端 bundle 目前 734 kB（Firebase SDK 佔大宗），上線前要做 code splitting
 - [ ] `fonts.css` 40 kB（gzip 15 kB），大部分是 21 片的 unicode-range 清單，可再壓
 - [ ] 綠色 `#008751` 對米色底只有 4.14:1，目前規定只放白底；若要放米底需另定一個深綠
 - [ ] Cubic 11 字型子集化與 unicode-range 分片（步驟 5）
