@@ -1,26 +1,35 @@
 /**
  * 路由與外殼。
  *
- * /app 底下的五個分頁共用 AppShell（頁首 + 底部導覽）；登入頁與邀請落地頁
- * 沒有導覽，走另一套簡單版面。四個內容分頁目前是佔位畫面，步驟 6～8 才填。
+ * /app 底下的分頁共用 AppShell（頁首 + 底部導覽）；登入頁與邀請落地頁沒有導覽。
+ *
+ * 除了登入與四個主要分頁以外都用 React.lazy 切開：設定底下那一大串
+ * （科目、章節、內容、精靈、邀請）平常用不到，不該躺在首次載入的 bundle 裡。
  */
 
+import { Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import type { ReactNode } from 'react';
 
 import AppShell from './components/AppShell';
 import { AuthProvider, useAuth } from './lib/auth';
 import { GroupProvider } from './lib/groupContext';
-import InvitePage from './routes/InvitePage';
-import JoinPage from './routes/JoinPage';
 import LoginPage from './routes/LoginPage';
-import ChaptersPage from './routes/ChaptersPage';
-import EnrollmentPage from './routes/EnrollmentPage';
-import ItemsPage from './routes/ItemsPage';
-import PlaceholderPage from './routes/PlaceholderPage';
-import SetupWizardPage from './routes/SetupWizardPage';
-import SubjectsPage from './routes/SubjectsPage';
-import SettingsPage from './routes/SettingsPage';
+
+// 四個主要分頁：進 app 第一眼就會用到，不切。
+import HomeworkPage from './routes/HomeworkPage';
+import NotesPage from './routes/NotesPage';
+import OverviewPage from './routes/OverviewPage';
+import ProgressPage from './routes/ProgressPage';
+
+// 設定與管理：按到才載。
+const ChaptersPage = lazy(() => import('./routes/ChaptersPage'));
+const EnrollmentPage = lazy(() => import('./routes/EnrollmentPage'));
+const InvitePage = lazy(() => import('./routes/InvitePage'));
+const ItemsPage = lazy(() => import('./routes/ItemsPage'));
+const JoinPage = lazy(() => import('./routes/JoinPage'));
+const SettingsPage = lazy(() => import('./routes/SettingsPage'));
+const SetupWizardPage = lazy(() => import('./routes/SetupWizardPage'));
+const SubjectsPage = lazy(() => import('./routes/SubjectsPage'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -31,6 +40,10 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function Loading() {
+  return <p className="hint">載入中…</p>;
+}
+
 export default function App() {
   return (
     <BrowserRouter
@@ -39,93 +52,59 @@ export default function App() {
     >
       <AuthProvider>
         <GroupProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/app" replace />} />
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/app" replace />} />
 
-            <Route
-              path="/login"
-              element={
-                <main className="shell">
-                  <LoginPage />
-                </main>
-              }
-            />
-            <Route
-              path="/join/:token"
-              element={
-                <main className="shell">
-                  <JoinPage />
-                </main>
-              }
-            />
+              <Route
+                path="/login"
+                element={
+                  <main className="shell">
+                    <LoginPage />
+                  </main>
+                }
+              />
+              <Route
+                path="/join/:token"
+                element={
+                  <main className="shell">
+                    <JoinPage />
+                  </main>
+                }
+              />
 
-            <Route
-              path="/app"
-              element={
-                <RequireAuth>
-                  <AppShell />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/app/overview" replace />} />
               <Route
-                path="overview"
+                path="/app"
                 element={
-                  <PlaceholderPage
-                    title="總覽"
-                    summary="7 天內到期的作業會列在這裡，依到期日排序。"
-                    step="步驟 8"
-                  />
+                  <RequireAuth>
+                    <AppShell />
+                  </RequireAuth>
                 }
-              />
-              <Route
-                path="homework"
-                element={
-                  <PlaceholderPage
-                    title="作業"
-                    summary="依科目與到期日列出所有作業。"
-                    step="步驟 8"
-                  />
-                }
-              />
-              <Route
-                path="notes"
-                element={
-                  <PlaceholderPage
-                    title="筆記"
-                    summary="關鍵字、檔案與連結，依章節整理。"
-                    step="步驟 8"
-                  />
-                }
-              />
-              <Route
-                path="progress"
-                element={
-                  <PlaceholderPage
-                    title="進度"
-                    summary="章節樹、目前進度，以及缺重點的章節標示。"
-                    step="步驟 8"
-                  />
-                }
-              />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="settings/invite/:gid" element={<InvitePage />} />
-              <Route path="settings/subjects" element={<SubjectsPage />} />
-              <Route path="settings/subjects/:subId" element={<ChaptersPage />} />
-              <Route path="settings/subjects/:subId/items" element={<ItemsPage />} />
-              <Route path="settings/enrollment" element={<EnrollmentPage />} />
-              <Route path="setup" element={<SetupWizardPage />} />
-            </Route>
+              >
+                <Route index element={<Navigate to="/app/overview" replace />} />
+                <Route path="overview" element={<OverviewPage />} />
+                <Route path="homework" element={<HomeworkPage />} />
+                <Route path="notes" element={<NotesPage />} />
+                <Route path="progress" element={<ProgressPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="settings/invite/:gid" element={<InvitePage />} />
+                <Route path="settings/subjects" element={<SubjectsPage />} />
+                <Route path="settings/subjects/:subId" element={<ChaptersPage />} />
+                <Route path="settings/subjects/:subId/items" element={<ItemsPage />} />
+                <Route path="settings/enrollment" element={<EnrollmentPage />} />
+                <Route path="setup" element={<SetupWizardPage />} />
+              </Route>
 
-            <Route
-              path="*"
-              element={
-                <main className="shell">
-                  <p className="hint">找不到這個頁面。</p>
-                </main>
-              }
-            />
-          </Routes>
+              <Route
+                path="*"
+                element={
+                  <main className="shell">
+                    <p className="hint">找不到這個頁面。</p>
+                  </main>
+                }
+              />
+            </Routes>
+          </Suspense>
         </GroupProvider>
       </AuthProvider>
     </BrowserRouter>

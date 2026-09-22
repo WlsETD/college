@@ -7,4 +7,5 @@ export * from './links';
 export * from './enrollment';
 export * from './limits';
 export * from './order';
+export * from './progress';
 export * from './types';

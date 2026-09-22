@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   return (
     <section>
-      <p className="eyebrow">階段一 · 步驟 4</p>
+      <p className="eyebrow">課程進度 · 作業提醒</p>
       <h1>進度本</h1>
       <p>大學班級共用的課程進度與作業提醒。請先用 Google 帳號登入。</p>
       <button type="button" className="btn" onClick={handleSignIn} disabled={busy}>

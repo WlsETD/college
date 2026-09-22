@@ -780,3 +780,27 @@ a {
   flex-direction: column;
   flex: 1;
 }
+
+/* =============================================================================
+   步驟 8：四個分頁
+   ========================================================================== */
+
+/* 缺重點的章節卡片：.missing 已經有紅框與斜線底紋，這裡把卡片版面補回來。 */
+.card.missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--sp-3);
+}
+
+/* 卡片自己會放「▲ 缺重點」標籤，.missing 的 ▲ 再加一次會變兩個。 */
+.card.missing::before {
+  content: none;
+}
+
+.tag-danger {
+  color: var(--red);
+  border-color: var(--red);
+}
