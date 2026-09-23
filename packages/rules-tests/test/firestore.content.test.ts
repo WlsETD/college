@@ -25,6 +25,7 @@ import {
   CHAP,
   CHAP_DEL,
   type Cell,
+  CLOSURE_DEL,
   GID,
   ITEM_DEL,
   MANAGER_ONLY,
@@ -37,6 +38,7 @@ import {
   SUB_DEL,
   anonDb,
   chapterData,
+  closureData,
   createTestEnv,
   dbOf,
   itemData,
@@ -127,6 +129,58 @@ describe('學期｜切換目前學期（groups/{gid}.activeSemesterId）', () =>
 describe('學期｜硬刪除', () => {
   it.each(table(ALL_DENY))('$actor — 應被$label', async (cell) => {
     await run(cell, (db) => deleteDoc(doc(db, P.semester())));
+  });
+});
+
+// =============================================================================
+// 停課日 closures（2026-09-23 新增）
+// =============================================================================
+
+describe('停課日｜讀取', () => {
+  it.each(table(MEMBER_READ))('$actor — 應被$label', async (cell) => {
+    await run(cell, (db) => getDoc(doc(db, P.closure())));
+  });
+
+  it('未登入 — 應被拒絕', async () => {
+    await assertFails(getDoc(doc(anonDb(env), P.closure())));
+  });
+
+  it('已軟刪除的停課日 — 成員也讀不到', async () => {
+    await assertFails(getDoc(doc(dbOf(env, '檢視者'), P.closure(CLOSURE_DEL))));
+  });
+
+  it('沒帶 deletedAt == null 的 list 查詢 — 成員也應被拒絕', async () => {
+    await assertFails(getDocs(collection(dbOf(env, '檢視者'), P.closures())));
+  });
+
+  it('帶了 deletedAt == null 的 list 查詢 — 成員應被允許', async () => {
+    await assertSucceeds(
+      getDocs(query(collection(dbOf(env, '檢視者'), P.closures()), where('deletedAt', '==', null))),
+    );
+  });
+});
+
+describe('停課日｜新增', () => {
+  it.each(table(MANAGER_ONLY))('$actor — 應被$label', async (cell) => {
+    await run(cell, (db) => setDoc(doc(db, P.closure('closure_new')), closureData()));
+  });
+});
+
+describe('停課日｜編輯', () => {
+  it.each(table(MANAGER_ONLY))('$actor — 應被$label', async (cell) => {
+    await run(cell, (db) => updateDoc(doc(db, P.closure()), { name: '校慶停課' }));
+  });
+});
+
+describe('停課日｜軟刪除', () => {
+  it.each(table(MANAGER_ONLY))('$actor — 應被$label', async (cell) => {
+    await run(cell, (db) => updateDoc(doc(db, P.closure()), { deletedAt: serverTimestamp() }));
+  });
+});
+
+describe('停課日｜硬刪除', () => {
+  it.each(table(ALL_DENY))('$actor — 應被$label', async (cell) => {
+    await run(cell, (db) => deleteDoc(doc(db, P.closure())));
   });
 });
 

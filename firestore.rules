@@ -133,13 +133,20 @@ service cloud.firestore {
       function noRolesAdded()   { return rolesDiff().addedKeys().size() == 0; }
       function ownerUidKept()   { return after().ownerUid == before().ownerUid; }
 
+      // kind 只能由 Cloud Function（Admin SDK，繞過規則）寫入。2026-09-23 新增：
+      // 個人空間（kind === 'personal'）是首次登入自動建立的，前端沒有任何路徑
+      // 能碰這個欄位——不論走哪一條 allow update 的分支都一樣。
+      function kindUntouched() { return after().kind == before().kind; }
+
       // 改名、切換目前學期等一般欄位編輯。不得動到 roles / ownerUid / deletedAt。
       function isPlainEdit() {
         return notDeleted() && keepsDeletedAt() && rolesUntouched() && ownerUidKept();
       }
 
+      // 2026-09-23 新增：個人空間不能被軟刪除，是首次登入自動建立的，
+      // 不該讓使用者意外刪掉自己唯一的個人空間。
       function isGroupSoftDelete() {
-        return isSoftDelete() && rolesUntouched() && ownerUidKept();
+        return isSoftDelete() && rolesUntouched() && ownerUidKept() && before().kind != 'personal';
       }
 
       function isGroupRestore() {
@@ -195,18 +202,22 @@ service cloud.firestore {
       allow read: if amMember() && notDeleted();
 
       // 建立群組：任何登入使用者都可以，建立者必須是唯一的擁有者。
+      // kind 必須是 'shared'——個人空間（kind: 'personal'）只由 Cloud Function
+      // 在首次登入時建立，前端建立群組的路徑一律是共用群組（2026-09-23 新增）。
       allow create: if isSignedIn()
         && createdActive()
         && after().ownerUid == authUid()
+        && after().kind == 'shared'
         && rolesValid(after().roles, after().ownerUid);
 
-      allow update: if (amManager() && isPlainEdit())
-        || (amOwner()   && isGroupSoftDelete())
-        || (amManager() && isGroupRestore())
-        || (amOwner()   && isOwnerRoleEdit())
-        || (amOwner()   && isOwnershipTransfer())
-        || (amManager() && isViewerRemoval())
-        || isSelfLeave();
+      allow update: if kindUntouched()
+        && ((amManager() && isPlainEdit())
+          || (amOwner()   && isGroupSoftDelete())
+          || (amManager() && isGroupRestore())
+          || (amOwner()   && isOwnerRoleEdit())
+          || (amOwner()   && isOwnershipTransfer())
+          || (amManager() && isViewerRemoval())
+          || isSelfLeave());
 
       allow delete: if false;
 
@@ -227,6 +238,17 @@ service cloud.firestore {
         allow read:   if isMember(gid) && notDeleted();
         allow create: if isSelf(uid) && isMember(gid) && createdActive();
         allow update: if isSelf(uid) && isMember(gid) && keepsDeletedAt();
+        allow delete: if false;
+      }
+
+      // -----------------------------------------------------------------------
+      // groups/{gid}/closures/{id} —— 學校行事曆的停課日（2026-09-23 新增）。
+      // 成員可讀；擁有者／管理者可新增、編輯、軟刪除；檢視者與非成員拒絕。
+      // -----------------------------------------------------------------------
+      match /closures/{closureId} {
+        allow read:   if isMember(gid) && notDeleted();
+        allow create: if isManager(gid) && createdActive();
+        allow update: if isManager(gid) && contentUpdateShape();
         allow delete: if false;
       }
 
@@ -294,6 +316,16 @@ service cloud.firestore {
     match /userGroups/{uid}/groups/{gid} {
       allow read:  if isSelf(uid);
       allow write: if false;
+    }
+
+    // =========================================================================
+    // users/{uid}/timetables/{termKey}（2026-09-23 新增）
+    // 個人課表，跟 groups/{gid} 的角色完全無關：一律「本人可讀寫，任何其他人
+    // （含同群組的管理者、擁有者）一律拒絕」。跟其餘集合一樣禁止硬刪除。
+    // =========================================================================
+    match /users/{uid}/timetables/{termKey} {
+      allow read, create, update: if isSelf(uid);
+      allow delete: if false;
     }
   }
 }

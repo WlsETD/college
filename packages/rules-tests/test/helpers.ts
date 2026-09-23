@@ -83,6 +83,12 @@ export const GID = 'g1';
 export const OTHER_GID = 'g2';
 /** 已軟刪除的群組。 */
 export const DELETED_GID = 'g_deleted';
+/** 擁有者的個人空間（kind: 'personal'），只有擁有者一人。2026-09-23 新增。 */
+export const PERSONAL_GID = 'g_personal';
+
+export const CLOSURE = 'closure1';
+export const CLOSURE_DEL = 'closure1_deleted';
+export const TERM_KEY = '115-1';
 
 export const SEM = 'sem1';
 export const SEM_DEL = 'sem1_deleted';
@@ -114,6 +120,9 @@ export const P = {
   item: (id = ITEM, sub = SUB, sem = SEM, gid = GID) =>
     `groups/${gid}/semesters/${sem}/subjects/${sub}/items/${id}`,
   userGroup: (uid: string, gid = GID) => `userGroups/${uid}/groups/${gid}`,
+  closures: (gid = GID) => `groups/${gid}/closures`,
+  closure: (id = CLOSURE, gid = GID) => `groups/${gid}/closures/${id}`,
+  timetable: (termKey = TERM_KEY, uid = OWNER) => `users/${uid}/timetables/${termKey}`,
 };
 
 /** Storage 的路徑慣例：groups/{gid}/... */
@@ -201,9 +210,39 @@ export function groupData(overrides: Record<string, unknown> = {}) {
     ...base,
     name: '資工一甲',
     ownerUid: OWNER,
+    kind: 'shared',
     roles: { ...SEEDED_ROLES },
     memberUids: [OWNER, ADMIN, ADMIN2, VIEWER, VIEWER2],
     activeSemesterId: SEM,
+    ...overrides,
+  };
+}
+
+export function closureData(overrides: Record<string, unknown> = {}) {
+  return {
+    ...base,
+    name: '教師節放假',
+    source: 'manual',
+    date: '2026-09-28',
+    ...overrides,
+  };
+}
+
+export function timetableData(overrides: Record<string, unknown> = {}) {
+  return {
+    ...base,
+    termKey: TERM_KEY,
+    entries: [
+      {
+        weekday: 2,
+        startPeriod: 3,
+        endPeriod: 4,
+        courseName: '微積分',
+        classroom: 'C301',
+        teacher: '王老師',
+        linkedSubject: null,
+      },
+    ],
     ...overrides,
   };
 }
@@ -289,6 +328,19 @@ export async function reseed(env: RulesTestEnvironment): Promise<void> {
         memberUids: [OUTSIDER],
       }),
     );
+    b.set(
+      doc(db, P.group(PERSONAL_GID)),
+      groupData({
+        name: '我的空間',
+        kind: 'personal',
+        ownerUid: OWNER,
+        roles: { [OWNER]: 'owner' },
+        memberUids: [OWNER],
+      }),
+    );
+
+    b.set(doc(db, P.closure()), closureData());
+    b.set(doc(db, P.closure(CLOSURE_DEL)), closureData({ ...baseDeleted }));
 
     b.set(doc(db, P.invite()), {
       ...base,

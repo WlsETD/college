@@ -35,6 +35,7 @@ import {
   OWNER,
   OWNER_ONLY,
   P,
+  PERSONAL_GID,
   VIEWER,
   VIEWER2,
   anonDb,
@@ -147,6 +148,26 @@ describe('群組｜建立群組（建立者成為擁有者）', () => {
         }),
       ),
     );
+  });
+
+  it('kind 帶 personal — 應被拒絕（2026-09-23 新增：個人空間只能由 Function 建立）', async () => {
+    const db = dbOf(env, '非成員');
+    await assertFails(
+      setDoc(
+        doc(db, P.group('g_new')),
+        groupData({ ownerUid: OUTSIDER, roles: { [OUTSIDER]: 'owner' }, kind: 'personal' }),
+      ),
+    );
+  });
+
+  it('沒帶 kind — 應被拒絕（2026-09-23 新增）', async () => {
+    const db = dbOf(env, '非成員');
+    const data: Record<string, unknown> = groupData({
+      ownerUid: OUTSIDER,
+      roles: { [OUTSIDER]: 'owner' },
+    });
+    delete data.kind;
+    await assertFails(setDoc(doc(db, P.group('g_new')), data));
   });
 });
 
@@ -356,6 +377,49 @@ describe('群組｜復原（deletedAt 改回 null）', () => {
 
   it.each(table(MANAGER_ONLY))('$actor — 應被$label', async (cell) => {
     await run(cell, (db) => updateDoc(doc(db, P.group()), { deletedAt: null }));
+  });
+});
+
+// =============================================================================
+// 個人空間（2026-09-23 新增）
+// =============================================================================
+
+describe('群組｜直接修改 kind — 一律拒絕', () => {
+  it.each(table(ALL_DENY))('$actor — 應被$label', async (cell) => {
+    await run(cell, (db) => updateDoc(doc(db, P.group()), { kind: 'personal' }));
+  });
+
+  it('擁有者藉著改名順手改 kind — 應被拒絕', async () => {
+    await assertFails(
+      updateDoc(doc(dbOf(env, '擁有者'), P.group()), { name: '資工一乙', kind: 'personal' }),
+    );
+  });
+
+  it('擁有者藉著轉移擁有者順手改 kind — 應被拒絕', async () => {
+    await assertFails(
+      updateDoc(doc(dbOf(env, '擁有者'), P.group()), {
+        ownerUid: ADMIN2,
+        [`roles.${OWNER}`]: 'admin',
+        [`roles.${ADMIN2}`]: 'owner',
+        kind: 'personal',
+      }),
+    );
+  });
+});
+
+describe('群組｜軟刪除個人空間 — 擁有者也應被拒絕', () => {
+  it('擁有者軟刪除自己的個人空間 — 應被拒絕', async () => {
+    await assertFails(
+      updateDoc(doc(dbOf(env, '擁有者'), P.group(PERSONAL_GID)), {
+        deletedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('對照組：擁有者軟刪除共用群組 — 應被允許', async () => {
+    await assertSucceeds(
+      updateDoc(doc(dbOf(env, '擁有者'), P.group()), { deletedAt: serverTimestamp() }),
+    );
   });
 });
 
