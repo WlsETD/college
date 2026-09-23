@@ -16,7 +16,7 @@ import {
   writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getBlob, ref, uploadBytes } from 'firebase/storage';
 import {
   UPLOAD_REJECTION_MESSAGE,
   checkUpload,
@@ -212,7 +212,11 @@ export async function createFileItem(
 }
 
 export async function fileUrl(storagePath: string): Promise<string> {
-  return getDownloadURL(ref(storage, storagePath));
+  // 不能用 getDownloadURL()：那組網址是給瀏覽器直接 GET，不會帶 Firebase Auth
+  // 的 ID token，而規則要求 request.auth 才能讀，會一律 403（storage/unauthorized）。
+  // 改用 getBlob() 讓 SDK 帶著登入身分抓檔案，再轉成本地 blob URL 給 window.open()。
+  const blob = await getBlob(ref(storage, storagePath));
+  return URL.createObjectURL(blob);
 }
 
 // -----------------------------------------------------------------------------
