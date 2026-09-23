@@ -227,18 +227,28 @@ workspace symlink），讓 `firebase-admin`／`firebase-functions` 貨真價實�
       --config firebase.deploy.json`），Artifact Registry 的清理政策也設了
       （`asia-east1`、7 天）
 - [x] 部署 Hosting，網址是 **https://college-f67fa.web.app**
-      （App Check 金鑰還沒設，見下面——目前這個網址能開，Google 登入也能用，
-      但寫入 Firestore／Storage 的動作會被 Functions 的 `enforceAppCheck: true` 擋掉）
+- [x] App Check：`進度本` 這個 Web App（跟 `.env.production.local` 的
+      `VITE_FIREBASE_APP_ID` 對得上，不是另一個叫 `college` 的 App）已用
+      reCAPTCHA Enterprise 金鑰（`college`，網域含 `college-f67fa.web.app`）註冊，
+      金鑰寫進 `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`，已重新 build + 部署 Hosting
+      （2026-09-23）。
+- [x] 6 個 HTTPS Callable Functions（`rotateInvite`／`joinByInvite`／`listInvites`／
+      `updateInviteExpiry`／`peekInvite`／`createInvite`）的 Cloud Run 驗證設定改成
+      「允許公開存取」（`roles/run.invoker` 授予 `allUsers`）——部署後這層預設留在
+      「需要驗證」，瀏覽器連 CORS 預檢都過不了；身分驗證仍然是靠程式碼裡的
+      Firebase Auth／App Check，不是靠這層（2026-09-23）。`onGroupWritten` 是
+      Firestore 觸發器，不用動。
+- [x] `storage.rules` 的 `firestore.get()` 跨服務呼叫：專案一開始沒有把這個
+      IAM 角色授權給 Storage 的服務帳戶，導致跨服務呼叫完全不會執行、
+      `isMember()`/`isManager()` 永遠判斷失敗，任何人讀寫都 403。已在
+      Storage 規則頁按「附加權限」修好（2026-09-23）。
 
-**還差幾項只能在 Console 手動點的（CLI 或 API 都到不了）：**
+**還差一項只能在 Console 手動點的（CLI 或 API 都到不了）：**
 
-1. **App Check：建立 reCAPTCHA Enterprise 網站金鑰。** [App Check 頁面](https://console.firebase.google.com/project/college-f67fa/appcheck) →
-   註冊網站金鑰，網域填 `college-f67fa.web.app`（Hosting 已經部署好，就是這個網址）。
-   金鑰填進 `apps/web/.env.production.local` 的 `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`，
-   填完要重新 `pnpm --filter @jindu/web build` 再 `firebase deploy --only hosting` 一次
-   才會生效（金鑰是打包進前端 bundle 的環境變數，不是執行期讀取）。
-2. **App Check enforcement。** 同一個頁面對 Firestore 與 Storage 分別按「強制」——
-   規則檔本身管不到這個（見上面「開發時必須記得的三件事」第三點）。
+1. **App Check enforcement。** [App Check 頁面](https://console.firebase.google.com/project/college-f67fa/appcheck) 對 Firestore 與 Storage 分別按「強制」——
+   規則檔本身管不到這個（見上面「開發時必須記得的三件事」第三點）。目前沒開
+   enforcement，代表沒帶 App Check token 的請求也能讀寫 Firestore／Storage
+   （Functions 端的 `enforceAppCheck: true` 不受影響，那是分開的機制）。
 
 **之後要重新部署，各自的指令：**
 
@@ -259,7 +269,8 @@ firebase deploy --only firestore:rules,firestore:indexes,storage --project colle
 - [ ] `packages/shared/data/holidays.json` **尚未經人工核對**，且不含學校行事曆的停課日
 - [x] 安全規則與權限表測試（步驟 3）
 - [x] Firebase 專案已連結（`college-f67fa`），Firestore／Storage／Functions 都已部署
-- [ ] App Check reCAPTCHA 金鑰與 enforcement、Hosting 部署，見上面「正式環境部署」
+- [x] App Check reCAPTCHA 金鑰、Cloud Run 公開存取、Storage↔Firestore 跨服務 IAM，見上面「正式環境部署」
+- [ ] App Check enforcement（Firestore／Storage 的「強制」開關），見上面「正式環境部署」
 - [ ] 前端 bundle 目前 734 kB（Firebase SDK 佔大宗），上線前要做 code splitting
 - [ ] `fonts.css` 40 kB（gzip 15 kB），大部分是 21 片的 unicode-range 清單，可再壓
 - [ ] 綠色 `#008751` 對米色底只有 4.14:1，目前規定只放白底；若要放米底需另定一個深綠
