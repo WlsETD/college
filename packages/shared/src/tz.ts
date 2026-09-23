@@ -25,6 +25,9 @@ export type CivilDate = Pick<CivilDateTime, 'year' | 'month' | 'day'>;
 /** ISO 8601 的星期編號：1 = 週一 … 7 = 週日。 */
 export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
+/** YYYY-MM-DD 格式的日期字串（台北當地日曆日）。 */
+export type DateKey = string;
+
 const PARTS_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: TZ,
   hour12: false,

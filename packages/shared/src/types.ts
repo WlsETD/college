@@ -9,8 +9,8 @@
  * 查詢都必須自己帶上 where('deletedAt', '==', null)。
  */
 
-import type { IsoWeekday } from './tz';
-import type { ClassSlot } from './nextClass';
+import type { DateKey, IsoWeekday } from './tz';
+import type { ClassSlot, TimetableSlot } from './nextClass';
 
 /** 毫秒時間戳。寫入 Firestore 時轉成 Timestamp。 */
 export type Millis = number;
@@ -31,11 +31,16 @@ export function isManager(role: Role | null | undefined): boolean {
   return role === 'owner' || role === 'admin';
 }
 
+/** 'personal' 是首次登入自動建立、只有自己一人的群組；不能軟刪除、前端不能改。
+ * 發出第一筆邀請時由 Cloud Function 改成 'shared'。 */
+export type GroupKind = 'personal' | 'shared';
+
 /** groups/{gid} */
 export interface Group extends SoftDeletable {
   id: string;
   name: string;
   ownerUid: string;
+  kind: GroupKind;
   /** 權限判斷的單一來源。安全規則只讀這個欄位。 */
   roles: Record<string, Role>;
   memberUids: string[];
@@ -67,6 +72,8 @@ export interface Member extends SoftDeletable {
 export interface Semester extends SoftDeletable {
   id: string;
   name: string;
+  /** 例如 "115-1"。對應使用者個人課表 users/{uid}/timetables/{termKey} 的文件 id。 */
+  termKey: string;
   /** YYYY-MM-DD */
   startDate: string;
   endDate: string;
@@ -134,4 +141,33 @@ export interface UserGroupRef {
   joinedAt: Millis;
 }
 
-export type { IsoWeekday, ClassSlot };
+/** 課表裡的一筆記錄。節次制，完全不記上課時刻；連堂存成一筆。 */
+export interface TimetableEntry extends TimetableSlot {
+  courseName: string;
+  classroom: string;
+  teacher: string;
+  /** 選填：對應到某個群組科目，供「下堂課」查關鍵字／作業用。 */
+  linkedSubject: { gid: string; semId: string; subId: string } | null;
+}
+
+/** users/{uid}/timetables/{termKey} —— 屬於個人，只有本人能讀寫，同群組其他成員看不到。 */
+export interface Timetable extends SoftDeletable {
+  /** 就是 termKey，例如 "115-1"。 */
+  id: string;
+  termKey: string;
+  entries: TimetableEntry[];
+}
+
+/** groups/{gid}/closures/{id} —— 學校行事曆的停課日（颱風假、校慶等）。 */
+export interface Closure extends SoftDeletable {
+  id: string;
+  name: string;
+  source: 'manual' | 'ics';
+  /** 單日停課，YYYY-MM-DD。與 startDate/endDate 擇一。 */
+  date?: DateKey;
+  /** 連續多日停課的起訖，YYYY-MM-DD，含頭尾。與 date 擇一。 */
+  startDate?: DateKey;
+  endDate?: DateKey;
+}
+
+export type { IsoWeekday, DateKey, ClassSlot, TimetableSlot };

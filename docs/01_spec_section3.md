@@ -64,6 +64,12 @@
 | 上傳超過 30 MB | ✗ | ✗ | ✗ | ✗ |
 | 上傳 `video/*` | ✗ | ✗ | ✗ | ✗ |
 | 刪除 Storage 物件 | ✗ | ✗ | ✗ | ✗ |
+| **個人空間**（2026-09-23 新增） ||||
+| 直接修改 `kind` | ✗ | ✗ | ✗ | ✗ |
+| 軟刪除個人空間（`kind === 'personal'`） | ✗ | — | — | — |
+| **停課日 `closures`**（2026-09-23 新增） ||||
+| 讀取 | ✓ | ✓ | ✓ | ✗ |
+| 新增／編輯／軟刪除 | ✓ | ✓ | ✗ | ✗ |
 | **通用** ||||
 | 硬刪除（Firestore `delete`） | ✗ | ✗ | ✗ | ✗ |
 | 把 `deletedAt` 改回 `null`（復原） | ✓ | ✓ | ✗ | ✗ |
@@ -84,6 +90,13 @@
 **Storage 物件一律不可刪除。** 檔案的「刪除」只是把對應的 `item` 軟刪除，
 實體檔案保留在 Storage。長期會累積孤兒檔案，之後以排程 Function
 清理軟刪除超過 N 天的物件——那是階段二的工作。
+
+**個人空間（2026-09-23 新增）。** `groups/{gid}.kind` 只能由 Cloud Function 寫入，前端的
+`update` 一律拒絕改動這個欄位，不論角色。`kind === 'personal'` 的群組不能被擁有者軟刪除
+——個人空間是首次登入自動建立的，不該讓使用者意外刪掉自己唯一的個人空間。
+
+**課表（2026-09-23 新增）。** `users/{uid}/timetables/{termKey}` 不是 `groups/{gid}` 底下的
+子集合，權限跟群組角色無關，一律「本人可讀寫，其他任何人（含同群組的管理者、擁有者）一律拒絕」。
 
 **邀請文件完全不經前端。** `invites` 子集合的讀寫一律拒絕，
 只由 Cloud Functions 以 Admin SDK 存取。原因是非成員無法通過安全規則
@@ -113,6 +126,13 @@ notDeleted()   = resource.data.deletedAt == null
   且新擁有者原本已是成員。
 - **移除檢視者**：`isManager(gid)`，且被移除者的原角色為 `viewer`
 - **`members/{uid}.enrolledSubjectIds`**：`isSelf(uid)`
+- **`groups/{gid}.kind`**（2026-09-23 新增）：任何 `update` 都必須 `after().kind == before().kind`，
+  沒有例外——這個欄位只由 Cloud Function（Admin SDK，繞過規則）寫入
+- **軟刪除 `groups/{gid}`**（2026-09-23 補充）：額外要求 `before().kind != 'personal'`
+- **`closures/{id}`**（2026-09-23 新增）：讀取 `isMember(gid) && notDeleted()`；
+  建立／編輯／軟刪除 `isManager(gid)`
+- **`users/{uid}/timetables/{termKey}`**（2026-09-23 新增）：讀寫皆為 `isSelf(uid)`，
+  和 `groups/{gid}` 的角色完全無關
 
 ### 兩個實作上的陷阱
 

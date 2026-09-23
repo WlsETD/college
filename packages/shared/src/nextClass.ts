@@ -11,6 +11,7 @@ import {
   parseTimeOfDay,
   toDateKey,
   weekdayOf,
+  type DateKey,
   type IsoWeekday,
 } from './tz';
 
@@ -110,4 +111,115 @@ export function nextSameSlotNextWeek(options: NextClassOptions): Date | null {
  */
 export function tomorrow(now: Date, time = '23:59'): Date {
   return atTaipei(addDays(toDateKey(now), 1), time);
+}
+
+// =============================================================================
+// 個人課表（節次制）
+//
+// 這一段是給 users/{uid}/timetables 用的，2026-09-23 拍板：課表完全不記上課
+// 時刻，只記節次（第 1–10 節）。刻意用不同的型別與函式名稱，不動上面時刻制的
+// ClassSlot / nextClassDate / nextSameSlotNextWeek / tomorrow —— 那一組是
+// Subject.schedule 用的，ScheduleEditor.tsx / SubjectForm.tsx / ItemForms.tsx /
+// lib/subjects.ts 都還在用，改了會整批壞掉。
+// =============================================================================
+
+/** 節次，固定第 1–10 節。 */
+export type Period = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+/** 課表裡的一個時段（連堂存成一筆）。 */
+export interface TimetableSlot {
+  weekday: IsoWeekday;
+  startPeriod: Period;
+  endPeriod: Period;
+}
+
+export interface NextTimetableClassOptions {
+  /** 基準時間，找的是這一天「明天」起的下一堂。 */
+  today: Date;
+  schedule: readonly TimetableSlot[];
+  /** 要跳過的日期，YYYY-MM-DD。國定假日 + 學校停課日。 */
+  holidays?: Iterable<string>;
+  /** 最多往後找幾天，預設 120 天（約一個學期）。 */
+  maxLookaheadDays?: number;
+}
+
+function validateTimetableSlot(slot: TimetableSlot): void {
+  if (!Number.isInteger(slot.weekday) || slot.weekday < 1 || slot.weekday > 7) {
+    throw new Error(`課表時段的 weekday 須為 1–7，收到：${String(slot.weekday)}`);
+  }
+  if (
+    !Number.isInteger(slot.startPeriod) ||
+    slot.startPeriod < 1 ||
+    slot.startPeriod > 10
+  ) {
+    throw new Error(`起始節須為 1–10，收到：${String(slot.startPeriod)}`);
+  }
+  if (
+    !Number.isInteger(slot.endPeriod) ||
+    slot.endPeriod < 1 ||
+    slot.endPeriod > 10
+  ) {
+    throw new Error(`結束節須為 1–10，收到：${String(slot.endPeriod)}`);
+  }
+  if (slot.startPeriod > slot.endPeriod) {
+    throw new Error(
+      `起始節不能晚於結束節，收到 startPeriod=${slot.startPeriod}, endPeriod=${slot.endPeriod}`,
+    );
+  }
+}
+
+/** 「明天」的日期字串（不跳假日）。 */
+export function tomorrowDateKey(today: Date): DateKey {
+  return addDays(toDateKey(today), 1);
+}
+
+/** 從 startKey 開始（含當天）往後找第一個有排課、且不是假日的日期。 */
+function searchTimetableDateKey(
+  startKey: DateKey,
+  schedule: readonly TimetableSlot[],
+  holidays: Set<string>,
+  maxDays: number,
+): DateKey | null {
+  let key = startKey;
+  for (let offset = 0; offset < maxDays; offset += 1) {
+    if (!holidays.has(key)) {
+      const weekday = weekdayOf(key);
+      if (schedule.some((slot) => slot.weekday === weekday)) return key;
+    }
+    key = addDays(key, 1);
+  }
+  return null;
+}
+
+/**
+ * 下堂課的日期：從「明天」起第一個有這門課的日期（今天有課也不算），
+ * 跳過國定假日與學校停課日。只回傳日期，不記時刻。找不到回傳 null。
+ */
+export function nextTimetableClassDate(
+  options: NextTimetableClassOptions,
+): DateKey | null {
+  const { today, schedule } = options;
+  if (schedule.length === 0) return null;
+  for (const slot of schedule) validateTimetableSlot(slot);
+
+  const holidays = new Set(options.holidays ?? []);
+  const maxDays = options.maxLookaheadDays ?? DEFAULT_LOOKAHEAD_DAYS;
+  return searchTimetableDateKey(tomorrowDateKey(today), schedule, holidays, maxDays);
+}
+
+/**
+ * 下堂課之後，同一個星期幾的下一次，同樣跳過假日。
+ * 遇到假日時不一定剛好是加七天。
+ */
+export function nextSameTimetableSlotNextWeek(
+  options: NextTimetableClassOptions,
+): DateKey | null {
+  const first = nextTimetableClassDate(options);
+  if (!first) return null;
+
+  const weekday = weekdayOf(first);
+  const sameSlots = options.schedule.filter((slot) => slot.weekday === weekday);
+  const holidays = new Set(options.holidays ?? []);
+  const maxDays = options.maxLookaheadDays ?? DEFAULT_LOOKAHEAD_DAYS;
+  return searchTimetableDateKey(addDays(first, 1), sameSlots, holidays, maxDays);
 }

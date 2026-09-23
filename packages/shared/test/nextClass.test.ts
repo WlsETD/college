@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   nextClassDate,
   nextClassOccurrences,
   nextSameSlotNextWeek,
+  nextTimetableClassDate,
+  nextSameTimetableSlotNextWeek,
   tomorrow,
+  tomorrowDateKey,
   type ClassSlot,
+  type TimetableSlot,
 } from '../src/nextClass';
 import { atTaipei, toDateKey } from '../src/tz';
 
@@ -202,5 +206,165 @@ describe('nextClassDate — 輸入驗證', () => {
     expect(() =>
       nextClassDate({ now: TUE_0800, schedule: [{ weekday: 2, start: '0910' }] }),
     ).toThrow();
+  });
+});
+
+// =============================================================================
+// 個人課表（節次制）
+// =============================================================================
+
+/** 週二第 3–4 節、週五第 6–7 節各一堂。 */
+const TIMETABLE: TimetableSlot[] = [
+  { weekday: 2, startPeriod: 3, endPeriod: 4 },
+  { weekday: 5, startPeriod: 6, endPeriod: 7 },
+];
+
+describe('nextTimetableClassDate — 基本情境', () => {
+  it('今天有課也不算，從明天開始找', () => {
+    // 2026-09-22 是週二，TIMETABLE 週二有課，但「今天」不算。
+    const key = nextTimetableClassDate({ today: TUE_0800, schedule: TIMETABLE });
+    expect(key).toBe('2026-09-25'); // 本週五
+  });
+
+  it('明天剛好有課', () => {
+    // 2026-09-24 是週四，明天（週五）有課。
+    const key = nextTimetableClassDate({
+      today: atTaipei('2026-09-24', '08:00'),
+      schedule: TIMETABLE,
+    });
+    expect(key).toBe('2026-09-25');
+  });
+
+  it('週末 → 跳到下週二', () => {
+    const key = nextTimetableClassDate({
+      today: atTaipei('2026-09-26', '10:00'),
+      schedule: TIMETABLE,
+    });
+    expect(key).toBe('2026-09-29');
+  });
+
+  it('沒有排課 → null', () => {
+    expect(nextTimetableClassDate({ today: TUE_0800, schedule: [] })).toBeNull();
+  });
+
+  it('只回傳日期字串，不含時刻資訊', () => {
+    const key = nextTimetableClassDate({ today: TUE_0800, schedule: TIMETABLE });
+    expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('nextTimetableClassDate — 跳過假日', () => {
+  it('下一堂落在假日 → 跳過，往後找', () => {
+    // 週五 9/25 中秋停課 → 下一堂是 9/29 週二
+    const key = nextTimetableClassDate({
+      today: TUE_0800,
+      schedule: TIMETABLE,
+      holidays: ['2026-09-25'],
+    });
+    expect(key).toBe('2026-09-29');
+  });
+
+  it('lookahead 內全是假日 → null', () => {
+    const allHolidays: string[] = [];
+    for (let d = 23; d <= 30; d += 1) allHolidays.push(`2026-09-${d}`);
+    const key = nextTimetableClassDate({
+      today: TUE_0800,
+      schedule: TIMETABLE,
+      holidays: allHolidays,
+      maxLookaheadDays: 7,
+    });
+    expect(key).toBeNull();
+  });
+});
+
+describe('nextTimetableClassDate — 輸入驗證', () => {
+  it('weekday 超出 1–7 會丟出例外', () => {
+    expect(() =>
+      nextTimetableClassDate({
+        today: TUE_0800,
+        schedule: [{ weekday: 0 as 1, startPeriod: 1, endPeriod: 1 }],
+      }),
+    ).toThrow();
+  });
+
+  it('節次超出 1–10 會丟出例外', () => {
+    expect(() =>
+      nextTimetableClassDate({
+        today: TUE_0800,
+        schedule: [{ weekday: 2, startPeriod: 1, endPeriod: 11 as 10 }],
+      }),
+    ).toThrow();
+  });
+
+  it('startPeriod 晚於 endPeriod 會丟出例外', () => {
+    expect(() =>
+      nextTimetableClassDate({
+        today: TUE_0800,
+        schedule: [{ weekday: 2, startPeriod: 5, endPeriod: 3 }],
+      }),
+    ).toThrow();
+  });
+});
+
+describe('nextSameTimetableSlotNextWeek — 下週同一堂', () => {
+  it('回到同一個星期時段的下一次', () => {
+    const key = nextSameTimetableSlotNextWeek({ today: TUE_0800, schedule: TIMETABLE });
+    // 下一堂是 9/25 週五 → 下週同一堂是 10/2 週五
+    expect(key).toBe('2026-10-02');
+  });
+
+  it('下週同一堂遇到假日會再往後跳', () => {
+    const key = nextSameTimetableSlotNextWeek({
+      today: TUE_0800,
+      schedule: TIMETABLE,
+      holidays: ['2026-10-02'],
+    });
+    expect(key).toBe('2026-10-09');
+  });
+
+  it('沒有排課 → null', () => {
+    expect(nextSameTimetableSlotNextWeek({ today: TUE_0800, schedule: [] })).toBeNull();
+  });
+});
+
+describe('tomorrowDateKey — 明天不跳假日', () => {
+  it('回傳明天的日期字串', () => {
+    expect(tomorrowDateKey(TUE_0800)).toBe('2026-09-23');
+  });
+
+  it('跨月跨年', () => {
+    expect(tomorrowDateKey(atTaipei('2026-12-31', '20:00'))).toBe('2027-01-01');
+  });
+
+  it('明天是假日也照樣回傳明天', () => {
+    expect(tomorrowDateKey(atTaipei('2026-09-24', '10:00'))).toBe('2026-09-25');
+  });
+});
+
+describe('個人課表節次制計算 — 在 TZ=America/New_York 下重跑', () => {
+  // 和 tz.test.ts 一樣的守則：故意把行程時區改成西半球，
+  // 確認實作全程走 tz.ts、沒有誤用 Date 的本地時間方法。
+  const originalTZ = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = 'America/New_York';
+  });
+
+  afterAll(() => {
+    process.env.TZ = originalTZ;
+  });
+
+  it('nextTimetableClassDate 不受行程時區影響', () => {
+    const key = nextTimetableClassDate({ today: TUE_0800, schedule: TIMETABLE });
+    expect(key).toBe('2026-09-25');
+  });
+
+  it('nextSameTimetableSlotNextWeek 不受行程時區影響', () => {
+    const key = nextSameTimetableSlotNextWeek({ today: TUE_0800, schedule: TIMETABLE });
+    expect(key).toBe('2026-10-02');
+  });
+
+  it('tomorrowDateKey 不受行程時區影響', () => {
+    expect(tomorrowDateKey(atTaipei('2026-12-31', '20:00'))).toBe('2027-01-01');
   });
 });

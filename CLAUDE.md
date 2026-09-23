@@ -65,8 +65,15 @@ Functions。**它會占用 8080 / 9199 / 9099 / 5001，和 `pnpm emu` 衝突。*
 | 7 | 我修的科目、內容項目四型（作業快速日期、關鍵字批次、檔案、連結） | ✅ 完成 |
 | 8 | 總覽／作業／筆記／進度四頁、缺重點標示、Emulator 全流程走查 | ✅ 完成 |
 
-階段二（**本次不做**）：考試、閃卡、LINE / LIFF、推播通知、AI 產生重點。
+階段二（**本次不做**）：考試、閃卡、LINE / LIFF、推播通知、AI 產生重點、
+AI 辨識行事曆 PDF／截圖與課表截圖（匯入前必須有逐筆確認畫面，2026-09-23 補列）。
 資料結構有預留位置，但不實作。
+
+> **2026-09-23 補充**：個人空間、課表、停課日是這天才拍板的決策（見上方技術決策表），
+> 步驟 4／6 當初完成並打勾時**還沒有**這些內容。之後要補：
+> 步驟 4 補「首次登入自動建立個人空間」的 Cloud Function；
+> 步驟 6 的開學設定精靈補「課表輸入」與「停課日手動輸入／`.ics` 匯入」。
+> 這兩塊都還沒排進本次的工作項目，先在這裡記著。
 
 ---
 
@@ -133,6 +140,11 @@ Cloud Functions 用 `enforceAppCheck: true`（設於 `functions/src/options.ts`�
 | 排序的實作 | 上下移動＝和鄰居對調 `order`，固定兩筆寫入 | UI 是 ↑↓ 按鈕不是拖曳，對調最簡單也不會用光間隔；計算在 `packages/shared/src/order.ts`，有 32 個測試 |
 | 「目前學期」 | 記在 `groups/{gid}.activeSemesterId` | 若改成在學期文件上放 `isActive`，要同時改兩筆才能保證只有一個，規則擋不住中間狀態 |
 | 刪章 | 連同底下的小節一起軟刪除（同一個 batch） | 留著孤兒小節在兩層樹上根本顯示不出來 |
+| 個人空間 | `groups/{gid}` 新增 `kind: 'personal' \| 'shared'`。首次登入由 Cloud Function 自動建立 `kind: 'personal'` 的群組（步驟 4 實作 Function，2026-09-23 才拍板，當初步驟 4 完成時未包含）；個人空間不能軟刪除；前端不能直接改 `kind`；發出第一個邀請時由 Function 把 `kind` 改成 `'shared'` | 個人使用等同「只有自己一人的群組」，直接複用既有的群組／科目／章節資料結構，不必另開一套 schema |
+| 課表儲存位置 | 存在 `users/{uid}/timetables/{termKey}`（例如 `"115-1"`），只有本人能讀寫，同群組其他成員看不到。以節次為單位（固定第 1–10 節），完全不記上課時刻；連堂存成一筆 | 課表是個人的作息，不是群組共用資料；節次制比時刻制更符合台灣課表的實際使用方式 |
+| 課表與科目排課的 `ClassSlot` 分開 | `packages/shared/src/nextClass.ts` 新增節次制的 `TimetableSlot`／`nextTimetableClassDate`／`nextSameTimetableSlotNextWeek`／`tomorrowDateKey`，回傳 `DateKey`（字串）而非 `Date`。既有時刻制的 `ClassSlot`／`nextClassDate`／`nextSameSlotNextWeek`／`tomorrow`（回傳 `Date`）完全不動，繼續給 `Subject.schedule` 與作業快速到期日用 | `Subject.schedule` 是步驟 6／7 已上線的功能，`ScheduleEditor.tsx`／`SubjectForm.tsx`／`ItemForms.tsx`／`lib/subjects.ts` 都在用；若把共用的 `ClassSlot` 直接改成節次制，這些畫面會整批壞掉。2026-09-23 討論後決定兩套互不影響、各自命名 |
+| 停課日 | 存在 `groups/{gid}/closures/{id}`，欄位含 `name`、`source: 'manual' \| 'ics'`，以及 `date`（單日，YYYY-MM-DD）或 `startDate`／`endDate`（連續多日，含頭尾）擇一。階段一只做手動輸入與 `.ics` 匯入（步驟 6 補，2026-09-23 才拍板），AI 辨識 PDF／截圖放階段二 | 行政院公告的國定假日之外，颱風假、校慶、運動會、考試週停課等學校自訂停課日沒有公開資料來源，只能讓使用者自己維護 |
+| 學期加 `termKey` | `Semester` 加 `termKey: string`（例如 `"115-1"`），對應同一學期使用者自己的課表文件 id | 讓 UI 能把群組裡的某個學期和使用者自己的個人課表對起來 |
 | 刪除確認 | 自製兩段式 `ConfirmButton`，不用 `window.confirm()` | 原生對話框是系統樣式，和像素風差太多；而且會卡住自動化測試 |
 | 章節查詢 | 整棵樹一次查回來（只帶 `deletedAt == null`），在前端組結構 | 一個科目的章節就是一份目錄，量很小，省掉複合索引 |
 | 上傳限制的來源 | `packages/shared/src/limits.ts` 的 `MAX_UPLOAD_BYTES`；`storage.rules` 另外寫死同一個數字 | 規則檔沒辦法 import，改成用 `apps/web/test/safety.test.ts` 比對兩邊 |
