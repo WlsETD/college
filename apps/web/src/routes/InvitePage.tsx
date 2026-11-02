@@ -2,13 +2,21 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { toDateKey } from '@jindu/shared';
+import ConfirmButton from '../components/ConfirmButton';
+import { useAuth } from '../lib/auth';
+import { ROLE_LABEL } from '../lib/groupContext';
 import {
   callCreateInvite,
   callListInvites,
   callRotateInvite,
   callUpdateInviteExpiry,
   inviteLink,
+  removeMember,
+  setMemberRole,
+  transferOwnership,
+  watchGroupDoc,
   watchMembers,
+  type GroupDoc,
   type InviteSummary,
   type IssuedInvite,
   type MemberRow,
@@ -30,13 +38,21 @@ const REJECTION_LABEL: Record<string, string> = {
 
 export default function InvitePage() {
   const { gid = '' } = useParams();
+  const { user } = useAuth();
   const [issued, setIssued] = useState<IssuedInvite | null>(null);
   const [invites, setInvites] = useState<InviteSummary[] | null>(null);
   const [members, setMembers] = useState<MemberRow[] | null>(null);
+  const [groupDoc, setGroupDoc] = useState<GroupDoc | null>(null);
   const [days, setDays] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const myUid = user?.uid ?? '';
+  const roles = groupDoc?.roles ?? {};
+  const myRole = roles[myUid];
+  const amOwner = myRole === 'owner';
+  const amManager = myRole === 'owner' || myRole === 'admin';
 
   const refresh = useCallback(async () => {
     try {
@@ -60,6 +76,23 @@ export default function InvitePage() {
       ),
     [gid],
   );
+
+  useEffect(
+    () => watchGroupDoc(gid, setGroupDoc, (err) => setError(err.message)),
+    [gid],
+  );
+
+  async function runRoleAction(action: () => Promise<void>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function expiresAt(): number | null {
     return days === null ? null : Date.now() + days * DAY;
@@ -196,13 +229,76 @@ export default function InvitePage() {
           <p className="hint">載入中…</p>
         ) : (
           <ul className="card-list">
-            {members.map((member) => (
-              <li key={member.id} className="card">
-                <div className="card-main">
-                  <strong>{member.displayName || member.uid}</strong>
-                </div>
-              </li>
-            ))}
+            {members.map((member) => {
+              const role = roles[member.uid];
+              const isMe = member.uid === myUid;
+              const canOwnerAct = amOwner && role !== 'owner' && !isMe;
+              const canManagerRemoveViewer = amManager && !amOwner && role === 'viewer' && !isMe;
+
+              return (
+                <li key={member.id} className="card card-stack">
+                  <div className="card-main">
+                    <strong>{member.displayName || member.uid}</strong>
+                    <span className="tag">{role ? (ROLE_LABEL[role] ?? role) : '（已移除）'}</span>
+                    {isMe ? <span className="tag">（我）</span> : null}
+                  </div>
+
+                  {canOwnerAct ? (
+                    <div className="card-actions">
+                      {role === 'viewer' ? (
+                        <button
+                          type="button"
+                          className="btn btn-small"
+                          disabled={busy}
+                          onClick={() =>
+                            void runRoleAction(() => setMemberRole(gid, roles, member.uid, 'admin'))
+                          }
+                        >
+                          升為管理者
+                        </button>
+                      ) : null}
+                      {role === 'admin' ? (
+                        <button
+                          type="button"
+                          className="btn btn-small"
+                          disabled={busy}
+                          onClick={() =>
+                            void runRoleAction(() => setMemberRole(gid, roles, member.uid, 'viewer'))
+                          }
+                        >
+                          降為檢視者
+                        </button>
+                      ) : null}
+                      <ConfirmButton
+                        label="移除"
+                        confirmLabel="確定移除"
+                        disabled={busy}
+                        onConfirm={() => void runRoleAction(() => removeMember(gid, roles, member.uid))}
+                      />
+                      <ConfirmButton
+                        label="轉讓擁有者"
+                        confirmLabel="確定轉讓（你會變成管理者）"
+                        disabled={busy}
+                        onConfirm={() =>
+                          void runRoleAction(() => transferOwnership(gid, roles, myUid, member.uid))
+                        }
+                      />
+                    </div>
+                  ) : null}
+
+                  {canManagerRemoveViewer ? (
+                    <div className="card-actions">
+                      <ConfirmButton
+                        label="移除"
+                        confirmLabel="確定移除"
+                        disabled={busy}
+                        onConfirm={() => void runRoleAction(() => removeMember(gid, roles, member.uid))}
+                      />
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -5,21 +5,29 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { HomeworkForm } from '../components/ItemForms';
 import { SubjectChip, SubjectFilter } from '../components/SubjectChip';
+import { useAuth } from '../lib/auth';
 import { useGroups } from '../lib/groupContext';
-import type { ItemRow } from '../lib/items';
+import { createHomework, type ItemContext, type ItemRow } from '../lib/items';
 import { watchAllHomework } from '../lib/overview';
 import { subjectMap, useCurriculum } from '../lib/useCurriculum';
 import { HomeworkCard } from './OverviewPage';
 
 export default function HomeworkPage() {
-  const { activeGid, activeSemesterId, activeGroup } = useGroups();
+  const { user } = useAuth();
+  const { activeGid, activeSemesterId, activeGroup, isManager } = useGroups();
   const { mine, all, filtered, error: curriculumError } = useCurriculum();
 
   const [rows, setRows] = useState<ItemRow[] | null>(null);
   const [subId, setSubId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
+
+  const [showForm, setShowForm] = useState(false);
+  const [formSubId, setFormSubId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeGid) return undefined;
@@ -47,7 +55,31 @@ export default function HomeworkPage() {
     return { overdue: [...overdue].reverse(), upcoming, undated };
   }, [visible, now]);
 
-  if (!activeSemesterId) {
+  const formSubject = mine?.find((s) => s.id === formSubId) ?? null;
+
+  function openForm() {
+    setFormSubId(subId);
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setFormSubId(null);
+  }
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!activeGid || !activeSemesterId) {
     return (
       <section>
         <h1>作業</h1>
@@ -70,6 +102,60 @@ export default function HomeworkPage() {
       {error ? <p className="error">▲ {error}</p> : null}
 
       <SubjectFilter subjects={mine ?? []} value={subId} onChange={setSubId} />
+
+      {isManager ? (
+        <div className="choices">
+          <button type="button" className="btn" onClick={() => (showForm ? closeForm() : openForm())}>
+            {showForm ? '取消新增' : '＋ 新增作業'}
+          </button>
+        </div>
+      ) : null}
+
+      {notice ? <p className="hint">✓ {notice}</p> : null}
+
+      {showForm ? (
+        <div className="panel">
+          <label className="field">
+            <span>科目</span>
+            <select
+              value={formSubId ?? ''}
+              onChange={(e) => setFormSubId(e.target.value === '' ? null : e.target.value)}
+            >
+              <option value="">請選擇科目</option>
+              {(mine ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}（{s.shortName}）
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {formSubject ? (
+            <HomeworkForm
+              schedule={formSubject.schedule ?? []}
+              busy={busy}
+              onCancel={closeForm}
+              onSubmit={(input) =>
+                run(async () => {
+                  const ctx: ItemContext = {
+                    gid: activeGid,
+                    semId: activeSemesterId,
+                    subId: formSubject.id,
+                    uid: user?.uid ?? '',
+                    chapterId: null,
+                  };
+                  await createHomework(ctx, input);
+                  closeForm();
+                  setNotice('作業已新增');
+                  window.setTimeout(() => setNotice(null), 4000);
+                })
+              }
+            />
+          ) : (
+            <p className="hint">請先選擇科目。</p>
+          )}
+        </div>
+      ) : null}
 
       <p className="hint">
         共 {visible.length} 件{filtered ? '（只顯示我修的科目）' : ''}

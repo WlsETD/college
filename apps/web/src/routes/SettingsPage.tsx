@@ -101,8 +101,8 @@ export default function SettingsPage() {
                     </button>
                   )}
                   {group.role === 'viewer' ? null : (
-                    <Link className="btn btn-small" to={`/app/settings/invite/${group.gid}`}>
-                      邀請連結
+                    <Link className="btn" to={`/app/settings/invite/${group.gid}`}>
+                      邀請連結 / 成員
                     </Link>
                   )}
                 </div>

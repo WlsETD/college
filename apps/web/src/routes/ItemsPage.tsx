@@ -11,6 +11,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import type { ItemType } from '@jindu/shared';
 import ConfirmButton from '../components/ConfirmButton';
+import FileThumbnail from '../components/FileThumbnail';
 import MathText from '../components/MathText';
 import {
   FileForm,
@@ -289,6 +290,13 @@ export default function ItemsPage() {
         {shown.map((item) => (
           <li key={item.id} className="card card-stack">
             <div className="card-main">
+              {item.type === 'file' && item.storagePath ? (
+                <FileThumbnail
+                  storagePath={item.storagePath}
+                  contentType={item.contentType}
+                  alt={item.title}
+                />
+              ) : null}
               <strong>{item.title}</strong>
 
               {item.type === 'homework' && item.dueAt !== null ? (

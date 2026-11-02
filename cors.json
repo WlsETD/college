@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "https://college-f67fa.web.app",
+      "https://college-f67fa.firebaseapp.com"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]

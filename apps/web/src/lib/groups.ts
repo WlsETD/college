@@ -15,12 +15,13 @@ import {
   onSnapshot,
   query,
   setDoc,
+  updateDoc,
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import type { Role, UserGroupRef } from '@jindu/shared';
 
-import { auditFieldsForCreate, docConverter, toMillis } from './converters';
+import { auditFieldsForCreate, auditFieldsForUpdate, docConverter, toMillis } from './converters';
 import { db, functions } from './firebase';
 
 // -----------------------------------------------------------------------------
@@ -46,6 +47,7 @@ export async function createGroup(name: string, profile: MemberProfile): Promise
   await setDoc(groupRef, {
     ...auditFieldsForCreate(),
     name: name.trim(),
+    kind: 'shared',
     ownerUid: profile.uid,
     roles: { [profile.uid]: 'owner' },
     memberUids: [profile.uid],
@@ -118,6 +120,55 @@ export function watchGroupDoc(
 ): Unsubscribe {
   const ref = doc(db, `groups/${gid}`).withConverter(docConverter<GroupDoc>());
   return onSnapshot(ref, (snap) => onChange(snap.exists() ? snap.data() : null), onError);
+}
+
+// -----------------------------------------------------------------------------
+// 角色管理
+//
+// 三個操作都是整包覆寫 roles 欄位，對得上規則的三種分支：
+//   setMemberRole   → owner 專用，isOwnerRoleEdit（升降級，不能碰自己）
+//   removeMember    → owner 用同一條 isOwnerRoleEdit 踢任何人；
+//                     admin 只能踢 viewer，走 isViewerRemoval
+//   transferOwnership → owner 專用，isOwnershipTransfer，自己同時降為 admin
+// 呼叫端要傳目前最新的 roles map，規則會依「整個文件」的前後差異判斷合法性。
+// -----------------------------------------------------------------------------
+
+export async function setMemberRole(
+  gid: string,
+  roles: Record<string, Role>,
+  targetUid: string,
+  newRole: 'admin' | 'viewer',
+): Promise<void> {
+  await updateDoc(doc(db, `groups/${gid}`), {
+    ...auditFieldsForUpdate(),
+    roles: { ...roles, [targetUid]: newRole },
+  });
+}
+
+export async function removeMember(
+  gid: string,
+  roles: Record<string, Role>,
+  targetUid: string,
+): Promise<void> {
+  const next = { ...roles };
+  delete next[targetUid];
+  await updateDoc(doc(db, `groups/${gid}`), {
+    ...auditFieldsForUpdate(),
+    roles: next,
+  });
+}
+
+export async function transferOwnership(
+  gid: string,
+  roles: Record<string, Role>,
+  currentOwnerUid: string,
+  newOwnerUid: string,
+): Promise<void> {
+  await updateDoc(doc(db, `groups/${gid}`), {
+    ...auditFieldsForUpdate(),
+    ownerUid: newOwnerUid,
+    roles: { ...roles, [newOwnerUid]: 'owner', [currentOwnerUid]: 'admin' },
+  });
 }
 
 // -----------------------------------------------------------------------------
